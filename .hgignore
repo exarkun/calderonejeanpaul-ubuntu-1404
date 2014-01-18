@@ -1,0 +1,11 @@
+syntax: glob
+*.list
+*.so
+*.rootmap
+*.pyc
+
+syntax: regexp
+^\.
+/\.
+^include/
+^python/bullet/__init__.py$

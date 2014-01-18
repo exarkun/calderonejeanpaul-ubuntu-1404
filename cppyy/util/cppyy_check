@@ -1,0 +1,147 @@
+#!/usr/bin/env pypy
+from __future__ import print_function
+
+import sys
+import os
+import re
+import argparse
+import cppyy
+
+def parse_rootmap(rootmap, libname=None):
+    result = set()
+    with open(rootmap, 'r') as f:
+        lineno = 0
+        for line in f.xreadlines():
+            lineno += 1
+            line = re.sub('#.*', '', line).strip()
+            if not line:
+                continue
+            words = line.split(':')
+            if len(words) != 2 or not words[0].startswith('Library.'):
+                sys.stderr.write("WARNING: Could not parse {} line {} (ignored): {}\n".format(rootmap, lineno, line))
+                continue
+            if libname and words[1].strip() != libname:
+                continue
+            symbol = words[0][8:].replace('@', ':').replace('-', ' ')
+            result.add(symbol)
+    return result
+
+def parse_listfile(listfile):
+    result = set()
+    with open(listfile, 'r') as f:
+        lineno = 0
+        for line in f.xreadlines():
+            lineno += 1
+            line = re.sub('#.*', '', line).strip()
+            if not line:
+                continue
+            try:
+                symtype, sym = line.split(None, 1)
+            except ValueError:
+                sys.stderr.write("WARNING: Could not parse {}, line {} (ignored): {}\n".format(listfile, lineno, line))
+                continue
+            if symtype == 'class':
+                result.add(sym)
+            elif symtype == 'function':
+                funcname = re.sub('([^(]* )?([^(]*).*', r'\2', sym)
+                if not funcname:
+                    sys.stderr.write("WARNING: Could not parse function declaration in {}, line {} (ignored): {}\n".format(listfile, lineno, sym))
+                result.add(funcname)
+            elif symtype == 'variable':
+                result.add(sym)
+            elif symtype == 'enum':
+                result.add(sym)
+            else:
+                sys.stderr.write("WARNING: Unrecognized type in {}, line {} (ignored): {}\n".format(listfile, lineno, line))
+    return result
+
+def split_cpp_ref(name):
+    result = []
+    current = []
+    depth = 0
+    for m in re.finditer('([<>]|::|[^<>:]+)', name):
+        tok = m.group(0)
+        if tok == '<':
+            current.append(tok)
+            depth += 1
+        elif tok == '>':
+            current.append(tok)
+            depth -= 1
+        elif tok == '::' and depth == 0:
+            result.append(''.join(current))
+            current = []
+        else:
+            current.append(tok)
+    if current:
+        result.append(''.join(current))
+    return result
+
+def check_symbol(name, prefix):
+    obj = cppyy.gbl
+    # cppyy and/or Reflex appears to compact-out spaces after commas in (for
+    # example) template instance names...
+    name = name.replace(', ', ',')
+    for attr in split_cpp_ref(name):
+        try:
+            obj = getattr(obj, attr)
+        except Exception, e:
+            sys.stderr.write("%s: %s: %s\n" % (prefix, name, e))
+            return False
+    return True
+
+parser = argparse.ArgumentParser(description="Check all generated library symbols are accessible via cppyy")
+parser.add_argument('libfile', metavar='FILENAME', help='Shared library file to test')
+
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument('--rootmap', metavar='FILENAME', action='store', help='Rootmap file containing the list of symbols to check')
+group.add_argument('--listfile', metavar='FILENAME', action='store', help='List file containing the list of symbols to check')
+
+parser.add_argument('--libname', metavar='NAME', action='store', help='Name of the library, as it appears in the rootmap file (defaults to basename of libfile)')
+parser.add_argument('--check-all', '-A', action='store_true', help='Check all symbols listed in rootmap, even if the library name does not match')
+parser.add_argument('--verbose', '-v', action='store_true', help='Print more verbose output')
+parser.add_argument('--quiet', '-q', action='store_true', help='Do not print any output except error messages')
+
+args = parser.parse_args()
+
+if args.quiet:
+    # Quiet overrides verbose...
+    args.verbose = False
+
+if args.check_all:
+    libname = None
+elif args.libname:
+    libname = args.libname
+else:
+    libname = os.path.basename(args.libfile)
+
+try:
+    cppyy.load_reflection_info(args.libfile)
+except Exception, e:
+    sys.stderr.write("Unable to load %s: %s\n" % (args.libfile, e))
+    sys.exit(3)
+
+if args.rootmap:
+    test_symbols = sorted(parse_rootmap(args.rootmap, libname))
+else:
+    test_symbols = sorted(parse_listfile(args.listfile))
+
+succeeded = 0
+failed = 0
+
+for sym in test_symbols:
+    if check_symbol(sym, args.libfile):
+        succeeded += 1
+        if args.verbose:
+            print("  {}: OK".format(sym))
+    else:
+        failed += 1
+        if args.verbose:
+            print("  {}: FAILED".format(sym))
+
+if not args.quiet:
+    print("[{}: Checked {} symbols: {} successful, {} failed]".format(args.libfile, len(test_symbols), succeeded, failed))
+
+if failed:
+    sys.exit(1)
+else:
+    sys.exit(0)

@@ -1,0 +1,130 @@
+== PROJECT INFO ==
+
+Project Name: cppyy-bullet
+Project Home: https://code.google.com/p/cppyy-bullet/
+Author/Maintainer: Alex Stewart <foogod@gmail.com>
+
+This package provides PyPy bindings for the Bullet physics library using cppyy.
+
+=== COMPATIBILITY ===
+
+As cppyy is currently only implemented for PyPy, you will need to use PyPy (not
+CPython) to use these bindings.
+
+Theoretically, the PyROOT package (which cppyy is based on) supports CPython,
+and it may be possible to use these source files to build or use equivalent
+Bullet bindings for CPython using PyROOT, but this has not been tested and I do
+not personally know exactly what would be required to do this.  (If anybody
+wants to give this a try, please let me know how it goes!)
+
+This package has currently only been tested under Ubuntu Linux.  I believe it
+should work equivalently under most other Unix-like OSes (including MacOS X,
+though some paths may need tweaking when building, I'm not sure).  It should
+theoretically also work with only minor changes under Windows as well, but I
+haven't really looked into this at all yet.
+
+=== STATUS ===
+
+This package is currently in a very preliminary state.  Basic bindings exist
+for most of the Bullet classes and functions, and simple apps can be built.
+Very little testing has been done yet.
+
+The largest issue right now is probably the lack of callback support (due to
+limitations in Reflex, which cppyy is currently based on), which is likely to
+be needed by most non-trivial applications.  In the long term, it should be
+possible to fix this when cppyy moves to a Cling (LLVM) backend, but that is
+still a work-in-progress.  In the meantime, I have a plan for an interim
+workaround, and will hopefully have something better in place soon.
+
+The current plan after that is to work on porting the demo applications from
+the Bullet distribution's "Demos" directory to Python, testing and fixing up
+any required functionality along the way.  If anybody is interested in helping
+with this, let me know!
+
+== REQUIREMENTS ==
+
+Note: Currently these bindings have only been developed/tested against Bullet
+2.81/2.82.  Other versions of the Bullet library may or may not work, I haven't
+tried it..
+
+To build this package, you will need the following:
+
+    * PyPy 2.2.x or later
+    * Bullet libraries and include files (duh)
+    * The same C++ compiler/linker used to build Bullet (C++ is picky about
+      these things)
+    * GNU Make
+    * The 'patch' utility
+
+Additionally, the following software specific to generating cppyy bindings is
+also required:
+
+    * Reflex (2013-08-14 or newer)
+    * gccxml
+
+For details on obtaining and installing Reflex/gccxml on your system, please see:
+
+    http://doc.pypy.org/en/latest/cppyy.html
+
+=== BUILDING/INSTALLING ===
+
+TODO: This process will eventually be converted to use a setup.py script
+instead, but for right now, GNU Make is currently needed to build/install this
+package..
+
+Note: It may be necessary to edit Config.mk and change the paths appropriately
+for your system before building.
+
+To build the bindings, simply type 'make' (or 'make all').  'make check' can
+also be used to perform basic checks to make sure everything built correctly
+and the cppyy library can be properly imported.
+
+To install the bullet bindings for all PyPy programs, type 'make install' (or
+'sudo make install', if necessary).  This will copy the necessary files to
+PyPy's site-packages directory.
+
+Alternately, if you want to use the bindings without installing them, you can
+set the following environment variables instead:
+
+  export LD_LIBRARY_PATH=<this directory>/cppyy
+  export PYTHONPATH=<this directory>/python
+
+=== USING ===
+
+The recommended way to use these bindings from pypy, once they have been
+properly built and installed, is as follows:
+
+  from bullet import bt
+
+Then all of the normal Bullet functions/constants/etc will be available under
+the "bt" module, like so:
+
+  broadphase = bt.DbvtBroadphase()
+
+The goal is to make the bindings as transparent as possible, so you should be
+able to use existing Bullet API documentation/samples/etc with only minor
+(and obvious) changes in a Python program (for an example of this, see the
+"wiki_helloworld.py" program in the "Demos" directory).
+
+Note that under the "bt" module, the initial "bt" (if present) in Bullet's
+class/function/etc names is stripped off, so for example "btDbvtBroadphase()"
+in C++ becomes "bt.DbvtBroadphase()" in Python.  (Likewise, for constants,
+"BT_NULL_PAIR" becomes "bt.NULL_PAIR", etc)
+
+If you really want to, you can also refer to things with the "bt" or "BT_"
+prefix intact (i.e. "bt.DbvtBroadphase()" and "bt.btDbvtBroadphase()" refer to
+the same thing), but this is generally just redundant, so the shorter form is
+recommended.  (And please don't mix multiple styles in the same program, as
+that's just bound to confuse people..)
+
+Note that some symbols are also available under the "bullet" module directly,
+as well, and you could do "from bullet import *" instead, in which case you
+would get a bunch the Bullet symbols (with their "bt"/"BT_" prefixes intact)
+directly in your module's namespace (and you could then just refer to
+"btDbvtBroadphase()" in your code).  PLEASE NOTE, however, that due to
+limitations in the way Python modules work, global variables and constants
+cannot be accessed this way.  You will still need to access them via 'bt' (or
+'bullet.bt', depending on how you import things).  To reduce confusion (and to
+keep the global namespace cleaner), it is recommended that you just use "from
+bullet import bt" and "bt.<symbolname>" to reference everything instead.
+

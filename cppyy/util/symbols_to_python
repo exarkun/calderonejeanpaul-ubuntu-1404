@@ -1,0 +1,45 @@
+#!/usr/bin/env pypy
+from __future__ import print_function
+
+import sys
+import os
+import re
+import argparse
+import cppyy
+
+parser = argparse.ArgumentParser(description="Generate a list of all loadable symbols, suitable for including in a Python program")
+parser.add_argument('libfile', metavar='FILENAME', help='Cppyy shared library file')
+
+parser.add_argument('--template', metavar='FILENAME', help='Template file to use')
+
+args = parser.parse_args()
+
+try:
+    cppyy.load_reflection_info(args.libfile)
+except Exception, e:
+    sys.stderr.write("Unable to load %s: %s\n" % (args.libfile, e))
+    sys.exit(3)
+
+symbols = set()
+hidden_symbols = set()
+for sym in sorted(dir(cppyy.gbl)):
+    sym = sym.split('<', 2)[0]
+    try:
+        getattr(cppyy.gbl, sym)
+        if sym.startswith('_'):
+            hidden_symbols.add(sym)
+        else:
+            symbols.add(sym)
+    except AttributeError as e:
+        sys.stderr.write("WARNING: Error accessing symbol {!r} (skipping): {}\n".format(sym, e))
+
+if args.template:
+    with open(args.template, 'r') as f:
+        template = f.read()
+else:
+    template = "%SYMBOLS%"
+
+template = template.replace("%SYMBOLS%", repr(sorted(symbols)))
+template = template.replace("%HIDDEN_SYMBOLS%", repr(sorted(hidden_symbols)))
+template = template.replace("%ALL_SYMBOLS%", repr(sorted(symbols | hidden_symbols)))
+print(template)

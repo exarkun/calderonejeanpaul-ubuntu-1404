@@ -1,0 +1,190 @@
+<lcgdict>
+  <!--
+    NOTE: To anyone editing this file, genreflex does not parse XML comments
+    well, and bombs out if quote ("") or apostrophe (') characters are not
+    matched inside comments.  In particular, this means to watch out for
+    contractions like "it's" inside comments.  To try to minimize this problem,
+    single apostrophes have been replaced by back-ticks (`) in the following
+    comment blocks (and it is recommended anyone editing this file do the
+    same).
+  -->
+
+  <class pattern="bt*"/>
+  <class pattern="CProfile*"/>
+  <enum pattern="bt*"/>
+  <enum name="BroadphaseNativeTypes"/>
+  <enum name="PHY_ScalarType"/>
+  <function pattern="bt*"/>
+  <variable pattern="sBullet*"/>
+  <variable pattern="g*"/>
+  <variable pattern="BT_*"/>
+
+  <exclusion>
+    <!--
+      Don`t include btAlignedAllocator or btAlignedObject::less classes.
+      They`re not actually very useful in this context, and that way we
+      don`t have to explicitly instantiate all of them in cppyy_bullet.h..
+    -->
+    <class pattern="btAlignedAllocator&lt;*&gt;"/>
+    <class pattern="btAlignedObjectArray&lt;*&gt;::less"/>
+
+    <!--
+      Reflex has issues with the private inner class that btMultiSapBroadphase
+      references, and it`s listed as "experimental" anyway, so we leave it out
+      for now.
+    -->
+    <class pattern="btMultiSapBroadphase*"/>
+    <class pattern="btAlignedObjectArray&lt;btMultiSapBroadphase*&gt;"/>
+
+    <!--
+      For some reason, genreflex does not seem to be willing to include
+      templates of const-pointer types.  In this case, it doesn`t seem to be
+      that big a deal if we leave these couple out of the bindings..
+    -->
+    <class pattern="btAlignedObjectArray&lt;* const*&gt;"/>
+    <class pattern="btHashMap&lt;* const*&gt;"/>
+
+    <!--
+      Reflex does not support function pointer (callback) variable types.
+      This may become an option when cppyy switches to using cling instead of
+      Reflex..
+    -->
+    <variable pattern="g*Callback"/>
+
+    <!--
+      Reflex also apparently doesn`t support char[] variables of undefined
+      length, so the following don`t currently work either..
+    -->
+    <variable name="sBulletDNAstr"/>
+    <variable name="sBulletDNAstr64"/>
+
+    <!--
+      This is apparently a bug in the headers: "class btVehicleTuning;" (in the
+      global scope) is forward-declared in btRaycastVehicle.h, but never used
+      or defined anywhere.  (The correct class name appears to actually be
+      btRaycastVehicle::btVehicleTuning instead.)
+    -->
+    <class name="btVehicleTuning"/>
+
+    <!--
+      CProfileIterator::Enter_Largest_Child is declared in the headers, but
+      not implemented anywhere in the Bullet source code.
+    -->
+    <class name="CProfileIterator">
+      <method name="Enter_Largest_Child"/>
+    </class>
+
+    <!--
+      btAxisSweep3Internal::processAllOverlappingPairs is declared in the
+      headers, but never implemented in the libraries.
+    -->
+    <class pattern="btAxisSweep3Internal&lt;*&gt;">
+      <method name="processAllOverlappingPairs"/>
+    </class>
+
+    <!--
+      btAlignedObjectArray contains routines that assume that all contained
+      object types have "<", ">", and "==" operators defined, but many of the
+      types used in btAlignedObjectArrays don`t actually define these types.
+      This causes a ton of instantiation failures if we don`t explicitly
+      exclude these methods for the types that don`t support them (this is
+      arguably a bug in the Bullet class heirarchy design).
+    -->
+    <class name="btAlignedObjectArray&lt;btSolverConstraint&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btSolverBody&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btIndexedMesh&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btBroadphasePair&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btQuantizedBvhNode&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btBvhSubtreeInfo&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btOptimizedBvhNode&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btWheelInfo&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btTypedConstraint::btConstraintInfo1&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btDbvt::sStkNPS&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btDbvt::sStkNP&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btDbvt::sStkNN&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btCompoundShapeChild&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btHashInt&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btHashPtr&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btHashString&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btTriangleInfo&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btPointerUid&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btElement&gt;">
+      <method name="findBinarySearch"/>
+      <method name="findLinearSearch"/>
+      <method name="remove"/>
+    </class>
+
+  </exclusion>
+</lcgdict>
