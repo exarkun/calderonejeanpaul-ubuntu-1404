@@ -1,4 +1,5 @@
 #include <btBulletDynamicsCommon.h>
+#include "callbacks.h"
 
 // btVoronoiSimplexSolver, btConvexPenetrationDepthSolver,
 // btSimulationIslandManager, and btPoolAllocator are referenced in various

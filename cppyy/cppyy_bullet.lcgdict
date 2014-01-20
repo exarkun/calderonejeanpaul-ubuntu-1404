@@ -187,4 +187,8 @@
     </class>
 
   </exclusion>
+
+  <!-- Helper functions/classes from callbacks.h -->
+  <function pattern="_set_*Callback"/>
+
 </lcgdict>

@@ -4,6 +4,16 @@ import cppyy
 
 _solib_name = "cppyy_bullet.so"
 
+# First, create the 'bt' object, so that when we import other modules (such as
+# 'bullet.callbacks', they can do 'from bullet import bt' too. (we'll populate
+# BulletLibrary later)
+class BulletLibrary (object):
+    pass
+
+bt = BulletLibrary()
+
+__all__ = ['bt']
+
 # Look for the shared library first in the same directory as __init__.py
 # If it's not there, fall back to using the normal library search path instead.
 _solib = os.path.join(os.path.dirname(__file__), _solib_name)
@@ -13,35 +23,34 @@ cppyy.load_reflection_info(_solib)
 
 _cppyy_syms = %SYMBOLS%
 
-class BulletLibrary (object):
-    pass
-
-bt = BulletLibrary()
-
-__all__ = ['bt']
-
 for symbol in _cppyy_syms:
     # We must use getattr first to prod cppyy into actually loading the
     # symbol into its dictionary...
     value = getattr(cppyy.gbl, symbol)
 
-    # But for global variables, we actually want to look things up via raw __dict__ access to make sure we copy the underlying property (getter/setter) object instead of just the current value. (But just to complicate things, some other types of symbols (i.e. typedefs) are never actually present in the cppyy.gbl dictionary and can only be fetched via getattr.  So try the dict lookup, and fall back to just using the value we got from getattr above if that's not found..)
+    # But for global variables, we actually want to look things up via raw
+    # __dict__ access to make sure we copy the underlying property
+    # (getter/setter) object instead of just the current value. (But just to
+    # complicate things, some other types of symbols (i.e. typedefs) are never
+    # actually present in the cppyy.gbl dictionary and can only be fetched via
+    # getattr.  So try the dict lookup, and fall back to just using the value
+    # we got from getattr above if that's not found..)
     vobj = cppyy.gbl.__dict__.get(symbol, value)
 
-    # These must be set on the BulletLibrary class, not the 'bt' object,
+    # All these must be set on the BulletLibrary class, not the 'bt' object,
     # because properties (getters/setters) only work when defined on the class,
     # not the object.
     # However, if vobj is a function, then if we put it on the class, it will
     # end up being a bound method, which will change the arguments it gets
     # called with, and we don't want that.  In that case, we need to wrap it as
-    # a staticmethod to avoid this.
+    # a staticmethod to avoid that.
     if isinstance(vobj, types.FunctionType):
         class_vobj = staticmethod(vobj)
     else:
         class_vobj = vobj
     setattr(BulletLibrary, symbol, class_vobj)
 
-    # Also define them under "trimmed" names so that the user can refer to
+    # Also store them under "trimmed" names so that the user can refer to
     # things as (for example) "bt.DbvtBroadphase()" instead of
     # "bt.btDbvtBroadphase()"..
     if symbol.startswith('bt'):
@@ -63,4 +72,9 @@ for symbol in _cppyy_syms:
     if vobj == value:
         globals()[symbol] = vobj
         __all__.append(symbol)
+
+from . import callbacks
+BulletLibrary.gContactAddedCallback = callbacks.ContactAddedCallback()
+BulletLibrary.gContactProcessedCallback = callbacks.ContactProcessedCallback()
+BulletLibrary.gContactDestroyedCallback = callbacks.ContactDestroyedCallback()
 

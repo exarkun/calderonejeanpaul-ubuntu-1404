@@ -5,6 +5,7 @@ APP_LIBDIRS = $(BULLET_HOME)/lib
 APP_LIBS = -lBulletDynamics -lBulletCollision -lLinearMath
 TARGETS = cppyy_bullet.so
 INSTALL_DIR = $(SITE_PACKAGES)/bullet
+EXTRA_HEADERS = callbacks.h
 
 GENREFLEX_FLAGS = 
 
@@ -46,7 +47,7 @@ clean:
 distclean: clean
 	rm -f $(ALL_TARGETS)
 
-%.cpp %.rootmap %.list: %.h %.lcgdict
+%.cpp %.rootmap %.list: %.h %.lcgdict $(EXTRA_HEADERS)
 	$(GENREFLEX) $< -s $*.lcgdict -o $*.cpp --rootmap=$*.rootmap --rootmap-lib=$*.so $(GENREFLEX_INCLUDES) $(GENREFLEX_FLAGS) | $(GENREFLEX_FILTER) $*.list
 
 %.so: %.cpp
