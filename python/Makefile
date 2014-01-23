@@ -18,5 +18,5 @@ install: all
 	mkdir -p $(SITE_PACKAGES)/bullet
 	cp bullet/*.py $(SITE_PACKAGES)/bullet
 
-%.py: %.py.template
+%.py: %.py.template ../cppyy/cppyy_bullet.so
 	../cppyy/util/symbols_to_python --template=$< ../cppyy/cppyy_bullet.so > $@

@@ -2,6 +2,7 @@ syntax: glob
 *.list
 *.so
 *.rootmap
+*.gccxml
 *.pyc
 
 syntax: regexp

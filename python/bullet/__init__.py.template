@@ -21,7 +21,53 @@ if not os.path.exists(_solib):
     _solib = _solib_name
 cppyy.load_reflection_info(_solib)
 
+from . import callbacks
+from . import mm
+
+def _define_symbol(symbol, value):
+    # All these must be set on the BulletLibrary class, not the 'bt' object,
+    # because properties (getters/setters) only work when defined on the class,
+    # not the object.
+    # However, if value is a function, then if we put it on the class, it will
+    # end up being a bound method, which will change the arguments it gets
+    # called with, and we don't want that.  In that case, we need to wrap it as
+    # a staticmethod to avoid that.
+    if isinstance(value, types.FunctionType):
+        class_value = staticmethod(value)
+    else:
+        class_value = value
+    setattr(BulletLibrary, symbol, class_value)
+
+    # Also store them under "trimmed" names so that the user can refer to
+    # things as (for example) "bt.DbvtBroadphase()" instead of
+    # "bt.btDbvtBroadphase()"..
+    if symbol.startswith('bt'):
+        setattr(BulletLibrary, symbol[2:], class_value)
+    elif symbol.startswith('BT_'):
+        setattr(BulletLibrary, symbol[3:], class_value)
+
+    # For classes and such, we will also define them in the 'bullet' module
+    # itself (this is mainly so that the repr() returned for cppyy objects
+    # (which reports them all as "bullet.<classname>") actually refers to a
+    # valid thing).
+    # We do NOT, however, do this for anything that involves magic (i.e.
+    # getter/setters), because that sort of magic doesn't work for module
+    # namespaces.
+    if not hasattr(value, '__get__'):
+        globals()[symbol] = value
+        __all__.append(symbol)
+
 _cppyy_syms = %SYMBOLS%
+
+# Misc tidbits that genreflex/cppyy doesn't handle, or we want to override
+# specially:
+_manual_syms = [
+    ('btScalar', float),
+    ('gContactAddedCallback', callbacks.ContactAddedCallback()),
+    ('gContactProcessedCallback', callbacks.ContactProcessedCallback()),
+    ('gContactDestroyedCallback', callbacks.ContactDestroyedCallback()),
+    ('memory_manager', mm.MemoryManager),
+]
 
 for symbol in _cppyy_syms:
     # We must use getattr first to prod cppyy into actually loading the
@@ -35,46 +81,10 @@ for symbol in _cppyy_syms:
     # actually present in the cppyy.gbl dictionary and can only be fetched via
     # getattr.  So try the dict lookup, and fall back to just using the value
     # we got from getattr above if that's not found..)
-    vobj = cppyy.gbl.__dict__.get(symbol, value)
+    value = cppyy.gbl.__dict__.get(symbol, value)
 
-    # All these must be set on the BulletLibrary class, not the 'bt' object,
-    # because properties (getters/setters) only work when defined on the class,
-    # not the object.
-    # However, if vobj is a function, then if we put it on the class, it will
-    # end up being a bound method, which will change the arguments it gets
-    # called with, and we don't want that.  In that case, we need to wrap it as
-    # a staticmethod to avoid that.
-    if isinstance(vobj, types.FunctionType):
-        class_vobj = staticmethod(vobj)
-    else:
-        class_vobj = vobj
-    setattr(BulletLibrary, symbol, class_vobj)
+    _define_symbol(symbol, value)
 
-    # Also store them under "trimmed" names so that the user can refer to
-    # things as (for example) "bt.DbvtBroadphase()" instead of
-    # "bt.btDbvtBroadphase()"..
-    if symbol.startswith('bt'):
-        setattr(BulletLibrary, symbol[2:], class_vobj)
-    elif symbol.startswith('BT_'):
-        setattr(BulletLibrary, symbol[3:], class_vobj)
-
-    # For classes and such, we will also define them in the 'bullet' module
-    # itself (this is mainly so that the repr() returned for cppyy objects
-    # (which reports them all as "bullet.<classname>") actually refers to a
-    # valid thing).
-    # Note: Due to limitations in the way modules work, we can't really do
-    # getters/setters for anything directly in the 'bullet' module itself.  For
-    # this reason, to avoid the potential for really nasty and confusing bugs
-    # (by users who don't realize this), we won't even define anything in the
-    # 'bullet' namespace that would require this functionality to work right
-    # (so only stuff where getattr() and cppyy.gbl.__dict__ return the same
-    # thing).
-    if vobj == value:
-        globals()[symbol] = vobj
-        __all__.append(symbol)
-
-from . import callbacks
-BulletLibrary.gContactAddedCallback = callbacks.ContactAddedCallback()
-BulletLibrary.gContactProcessedCallback = callbacks.ContactProcessedCallback()
-BulletLibrary.gContactDestroyedCallback = callbacks.ContactDestroyedCallback()
+for symbol, value in _manual_syms:
+    _define_symbol(symbol, value)
 

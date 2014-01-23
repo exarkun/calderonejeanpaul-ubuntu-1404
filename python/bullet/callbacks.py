@@ -8,6 +8,7 @@ class GlobalCallback (object):
     cffi_signature = None
 
     def __init__(self):
+        self.cffi_cbobj = ffi.callback(self.cffi_signature, self.cffi_callback)
         self.func = None
 
     def __get__(self, obj, objtype):
@@ -16,8 +17,7 @@ class GlobalCallback (object):
     def __set__(self, obj, value):
         self.func = value
         if value:
-            cb = ffi.callback(self.cffi_signature, self.cffi_callback)
-            cb = int(ffi.cast("intptr_t", cb))
+            cb = int(ffi.cast("intptr_t", self.cffi_cbobj))
         else:
             cb = 0
         getattr(cppyy.gbl, self.cpp_setter)(cb)
