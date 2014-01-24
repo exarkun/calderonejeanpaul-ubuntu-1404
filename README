@@ -31,20 +31,19 @@ Very little testing has been done yet.
 
 The largest issue right now is probably the lack of callback support (due to
 limitations in Reflex, which cppyy is currently based on), which is likely to
-be needed by most non-trivial applications.  In the long term, it should be
-possible to fix this when cppyy moves to a Cling (LLVM) backend, but that is
-still a work-in-progress.  In the meantime, I have a plan for an interim
-workaround, and will hopefully have something better in place soon.
+be needed by most non-trivial applications.  A workaround has been devised that
+will fix this, but it needs to be implemented on a callback-by-callback basis,
+so not all callbacks are finished yet.
 
-The current plan after that is to work on porting the demo applications from
-the Bullet distribution's "Demos" directory to Python, testing and fixing up
-any required functionality along the way.  If anybody is interested in helping
-with this, let me know!
+The current plan is to work on porting the demo applications from the Bullet
+distribution's "Demos" directory to Python, testing and fixing up any required
+functionality along the way.  If anybody is interested in helping with this,
+let me know!
 
 == REQUIREMENTS ==
 
 Note: Currently these bindings have only been developed/tested against Bullet
-2.81/2.82.  Other versions of the Bullet library may or may not work, I haven't
+2.80/2.81.  Other versions of the Bullet library may or may not work, I haven't
 tried it..
 
 To build this package, you will need the following:
@@ -62,14 +61,15 @@ also required:
     * Reflex (2013-08-14 or newer)
     * gccxml
 
-For details on obtaining and installing Reflex/gccxml on your system, please see:
+For details on obtaining and installing Reflex/gccxml on your system, please
+see:
 
     http://doc.pypy.org/en/latest/cppyy.html
 
 === BUILDING/INSTALLING ===
 
 TODO: This process will eventually be converted to use a setup.py script
-instead, but for right now, GNU Make is currently needed to build/install this
+instead, but for right now, GNU Make is currently used to build/install this
 package..
 
 Note: It may be necessary to edit Config.mk and change the paths appropriately

@@ -25,3 +25,6 @@ template class btAxisSweep3Internal<unsigned int>::Handle;
 template class btAxisSweep3Internal<unsigned short>::Edge;
 template class btAxisSweep3Internal<unsigned short>::Handle;
 
+// Macros/Constants we want to make available to the Python side
+
+static btScalar _py_BT_LARGE_FLOAT = BT_LARGE_FLOAT;

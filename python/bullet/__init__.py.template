@@ -63,9 +63,11 @@ _cppyy_syms = %SYMBOLS%
 # specially:
 _manual_syms = [
     ('btScalar', float),
+    ('BT_LARGE_FLOAT', cppyy.gbl._py_BT_LARGE_FLOAT),
     ('gContactAddedCallback', callbacks.ContactAddedCallback()),
     ('gContactProcessedCallback', callbacks.ContactProcessedCallback()),
     ('gContactDestroyedCallback', callbacks.ContactDestroyedCallback()),
+    ('btTriangleCallback', callbacks.btTriangleCallback),
     ('memory_manager', mm.MemoryManager),
 ]
 

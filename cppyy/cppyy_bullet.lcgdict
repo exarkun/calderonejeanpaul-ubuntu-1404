@@ -188,7 +188,9 @@
 
   </exclusion>
 
-  <!-- Helper functions/classes from callbacks.h -->
-  <function pattern="_set_*Callback"/>
+  <!-- Helper functions/classes from callbacks.h and other misc hacks -->
+  <function pattern="_py_*"/>
+  <class pattern="_py_*"/>
+  <variable pattern="_py_*"/>
 
 </lcgdict>

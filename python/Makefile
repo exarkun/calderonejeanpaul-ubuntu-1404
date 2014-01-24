@@ -17,6 +17,7 @@ distclean: clean
 install: all
 	mkdir -p $(SITE_PACKAGES)/bullet
 	cp bullet/*.py $(SITE_PACKAGES)/bullet
+	PYTHONPATH=$(SITE_PACKAGES) pypy -c "import bullet"
 
 %.py: %.py.template ../cppyy/cppyy_bullet.so
 	../cppyy/util/symbols_to_python --template=$< ../cppyy/cppyy_bullet.so > $@
