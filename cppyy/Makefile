@@ -5,7 +5,7 @@ APP_LIBDIRS = $(BULLET_HOME)/lib
 APP_LIBS = -lBulletDynamics -lBulletCollision -lLinearMath
 TARGETS = cppyy_bullet.so
 INSTALL_DIR = $(SITE_PACKAGES)/bullet
-EXTRA_HEADERS = callbacks.h
+EXTRA_HEADERS = callbacks.h fixups.h
 
 GENREFLEX_FLAGS = 
 
@@ -31,6 +31,7 @@ INTERMEDIATES = $(TARGETS:.so=.cpp) $(TARGETS:.so=.list) $(TARGETS:.so=.gccxml)
 LDLIBPATH = $(subst $(space),:,$(APP_LIBDIRS)):$(REFLEXHOME)/lib
 
 .PHONY: all check clean distclean
+.SECONDARY: $(TARGETS:.so=.cpp)
 
 all: $(ALL_TARGETS)
 

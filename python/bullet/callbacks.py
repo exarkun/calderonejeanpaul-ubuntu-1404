@@ -71,3 +71,22 @@ class btTriangleCallback (cppyy.gbl._py_btTriangleCallback):
     def __repr__(self):
         return "<{} object at 0x{:x}>".format(self.__class__.__name__, cppyy.addressof(self))
 
+class btInternalTriangleIndexCallback (cppyy.gbl._py_btInternalTriangleIndexCallback):
+    def __new__(cls):
+        o = cppyy.gbl._py_btInternalTriangleIndexCallback.__new__(cls)
+        o.__class__ = cls
+        return o
+
+    def __init__(self):
+        self._cffi_cbobj = ffi.callback("void (*f)(intptr_t, intptr_t, intptr_t, int, int)", self._cffi_internalProcessTriangleIndex)
+        self._internalProcessTriangleIndex_ptr = int(ffi.cast("intptr_t", self._cffi_cbobj))
+
+    def _cffi_internalProcessTriangleIndex(self, i_triangle0, i_triangle1, i_triangle2, partId, triangleIndex):
+        triangle0 = cppyy.bind_object(i_triangle0, bt.Vector3)
+        triangle1 = cppyy.bind_object(i_triangle1, bt.Vector3)
+        triangle2 = cppyy.bind_object(i_triangle2, bt.Vector3)
+        self.internalProcessTriangleIndex((triangle0, triangle1, triangle2), partId, triangleIndex)
+
+    def __repr__(self):
+        return "<{} object at 0x{:x}>".format(self.__class__.__name__, cppyy.addressof(self))
+

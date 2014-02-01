@@ -21,6 +21,7 @@ if not os.path.exists(_solib):
     _solib = _solib_name
 cppyy.load_reflection_info(_solib)
 
+from . import fixups
 from . import callbacks
 from . import mm
 
@@ -68,6 +69,8 @@ _manual_syms = [
     ('gContactProcessedCallback', callbacks.ContactProcessedCallback()),
     ('gContactDestroyedCallback', callbacks.ContactDestroyedCallback()),
     ('btTriangleCallback', callbacks.btTriangleCallback),
+    ('btInternalTriangleIndexCallback', callbacks.btInternalTriangleIndexCallback),
+    ('btShapeHull', cppyy.gbl._py_btShapeHull),
     ('memory_manager', mm.MemoryManager),
 ]
 

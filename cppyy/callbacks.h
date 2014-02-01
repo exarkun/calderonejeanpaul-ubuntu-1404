@@ -80,3 +80,17 @@ public:
         cb((intptr_t)triangle, (intptr_t)(triangle+1), (intptr_t)(triangle+2), partId, triangleIndex);
     }
 };
+
+// btInternalTriangleIndexCallback
+
+typedef void (_cffi_btInternalTriangleIndexCallback_internalProcessTriangleIndex_t)(intptr_t, intptr_t, intptr_t, int, int);
+
+class _py_btInternalTriangleIndexCallback : public btInternalTriangleIndexCallback {
+public:
+    intptr_t _internalProcessTriangleIndex_ptr;
+
+    virtual void internalProcessTriangleIndex(btVector3 *triangle, int partId, int triangleIndex) {
+        _cffi_btInternalTriangleIndexCallback_internalProcessTriangleIndex_t *cb = (_cffi_btInternalTriangleIndexCallback_internalProcessTriangleIndex_t *)_internalProcessTriangleIndex_ptr;
+        cb((intptr_t)triangle, (intptr_t)(triangle+1), (intptr_t)(triangle+2), partId, triangleIndex);
+    }
+};
