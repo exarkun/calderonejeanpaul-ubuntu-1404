@@ -19,6 +19,7 @@ cppyy.gbl.btVector3.__radd__ = getattr(cppyy.gbl, 'operator+')
 cppyy.gbl.btVector3.__sub__ = getattr(cppyy.gbl, 'operator-')
 cppyy.gbl.btVector3.__neg__ = getattr(cppyy.gbl, 'operator-')
 cppyy.gbl.btVector3.__div__ = getattr(cppyy.gbl, 'operator/')
+cppyy.gbl.btVector3.__truediv__ = getattr(cppyy.gbl, 'operator/')
 
 cppyy.gbl.btMatrix3x3.__mul__ = getattr(cppyy.gbl, 'operator*')
 cppyy.gbl.btMatrix3x3.__rmul__ = getattr(cppyy.gbl, 'operator*')
@@ -28,6 +29,25 @@ cppyy.gbl.btMatrix3x3.__sub__ = getattr(cppyy.gbl, 'operator-')
 
 cppyy.gbl.btQuaternion.__mul__ = getattr(cppyy.gbl, 'operator*')
 cppyy.gbl.btQuaternion.__rmul__ = getattr(cppyy.gbl, 'operator*')
+
+# The array-subscript usage of btVector3 appears to be unusual/obscure, but it
+# is used in the demos, so we should support it (it also makes it easy to do
+# things like convert a btVector3 to a list/tuple):
+
+def __getitem__(self, index):
+    if index > 2:
+        raise IndexError(index)
+    return self.m_floats[index]
+
+def __setitem__(self, index, value):
+    self.m_floats[index] = value
+
+def __len__(self):
+    return 3
+
+cppyy.gbl.btVector3.__getitem__ = __getitem__
+cppyy.gbl.btVector3.__setitem__ = __setitem__
+cppyy.gbl.btVector3.__len__ = __len__
 
 # Misc overrides for particular methods:
 
