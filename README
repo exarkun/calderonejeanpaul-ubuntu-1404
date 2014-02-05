@@ -1,4 +1,4 @@
-== PROJECT INFO ==
+=== PROJECT INFO ===
 
 Project Name: cppyy-bullet
 Project Home: https://code.google.com/p/cppyy-bullet/
@@ -9,7 +9,7 @@ This package provides PyPy bindings for the Bullet physics library using cppyy.
 === COMPATIBILITY ===
 
 As cppyy is currently only implemented for PyPy, you will need to use PyPy (not
-CPython) to use these bindings.
+CPython) to use these bindings. (This should change in the future)
 
 Theoretically, the PyROOT package (which cppyy is based on) supports CPython,
 and it may be possible to use these source files to build or use equivalent
@@ -21,7 +21,8 @@ This package has currently only been tested under Ubuntu Linux.  I believe it
 should work equivalently under most other Unix-like OSes (including MacOS X,
 though some paths may need tweaking when building, I'm not sure).  It should
 theoretically also work with only minor changes under Windows as well, but I
-haven't really looked into this at all yet.
+haven't really looked into that at all yet.  Contributions/fixups in this
+department are welcome.
 
 === STATUS ===
 
@@ -40,7 +41,7 @@ distribution's "Demos" directory to Python, testing and fixing up any required
 functionality along the way.  If anybody is interested in helping with this,
 let me know!
 
-== REQUIREMENTS ==
+=== REQUIREMENTS ===
 
 Note: Currently these bindings have only been developed/tested against Bullet
 2.80/2.81.  Other versions of the Bullet library may or may not work, I haven't
@@ -49,7 +50,8 @@ tried it..
 To build this package, you will need the following:
 
     * PyPy 2.2.x or later
-    * Bullet libraries and include files (duh)
+    * Bullet libraries (duh)
+    * Bullet include files (these may be in a separate development package)
     * The same C++ compiler/linker used to build Bullet (C++ is picky about
       these things)
     * GNU Make
@@ -67,10 +69,6 @@ see:
     http://doc.pypy.org/en/latest/cppyy.html
 
 === BUILDING/INSTALLING ===
-
-TODO: This process will eventually be converted to use a setup.py script
-instead, but for right now, GNU Make is currently used to build/install this
-package..
 
 Note: It may be necessary to edit Config.mk and change the paths appropriately
 for your system before building.
@@ -128,3 +126,16 @@ cannot be accessed this way.  You will still need to access them via 'bt' (or
 keep the global namespace cleaner), it is recommended that you just use "from
 bullet import bt" and "bt.<symbolname>" to reference everything instead.
 
+=== TODO ===
+
+* Convert things over to use a setup.py script instead of GNU Make for
+  building/installing.  This will both make things more portable, and also
+  allow the package to be bundled up for distribution via PyPI, etc..
+
+* There are several header files that are not included as part of the standard
+  "basic" Bullet includes, and thus are not included in this binding.  Some of
+  these are useful extensions which it would be good to support down the line.
+  Those noticed thus far (there are probably others):
+  - bullet/BulletSoftBody/*
+  - bullet/BulletCollision/Gimpact/btGImpactShape.h
+  - bullet/BulletCollision/CollisionShapes/btTriangleIndexVertexMaterialArray.h

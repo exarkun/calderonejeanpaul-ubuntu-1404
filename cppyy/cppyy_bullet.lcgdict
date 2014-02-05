@@ -19,14 +19,24 @@
   <variable pattern="g*"/>
   <variable pattern="BT_*"/>
 
+  <function pattern="operator*"/>
+
   <exclusion>
     <!--
-      Don`t include btAlignedAllocator or btAlignedObject::less classes.
+      Don`t include any new/delete operators (that`s all handled automatically
+      anyway)
+    -->
+    <function pattern="operator new*"/>
+    <function pattern="operator delete*"/>
+
+    <!--
+      Don`t include btAlignedAllocator or btAlignedObjectArray::less classes.
       They`re not actually very useful in this context, and that way we
       don`t have to explicitly instantiate all of them in cppyy_bullet.h..
     -->
     <class pattern="btAlignedAllocator&lt;*&gt;"/>
     <class pattern="btAlignedObjectArray&lt;*&gt;::less"/>
+    <function proto_pattern="operator*btAlignedAllocator*"/>
 
     <!--
       Reflex has issues with the private inner class that btMultiSapBroadphase

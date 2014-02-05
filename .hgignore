@@ -9,4 +9,5 @@ syntax: regexp
 ^\.
 /\.
 ^include/
-^python/bullet/__init__.py$
+^python/bullet/__init__\.py$
+^cppyy/cppyy_bullet\.cpp$

@@ -22,12 +22,15 @@ except Exception, e:
 
 symbols = set()
 hidden_symbols = set()
+operator_symbols = set()
 for sym in sorted(dir(cppyy.gbl)):
     sym = sym.split('<', 2)[0]
     try:
         getattr(cppyy.gbl, sym)
         if sym.startswith('_'):
             hidden_symbols.add(sym)
+        elif sym.startswith('operator'):
+            operator_symbols.add(sym)
         else:
             symbols.add(sym)
     except AttributeError as e:
@@ -41,5 +44,6 @@ else:
 
 template = template.replace("%SYMBOLS%", repr(sorted(symbols)))
 template = template.replace("%HIDDEN_SYMBOLS%", repr(sorted(hidden_symbols)))
-template = template.replace("%ALL_SYMBOLS%", repr(sorted(symbols | hidden_symbols)))
+template = template.replace("%OPERATORS%", repr(sorted(operator_symbols)))
+template = template.replace("%ALL_SYMBOLS%", repr(sorted(symbols | hidden_symbols | operator_symbols)))
 print(template)

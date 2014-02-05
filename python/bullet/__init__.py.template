@@ -60,24 +60,79 @@ def _define_symbol(symbol, value):
 
 _cppyy_syms = %SYMBOLS%
 
+# Preprocessor defines (which we need to map to custom global variables),
+# typedefs, or other symbols which for some reason don't show up automatically
+# in _cppyy_syms (most of these actually map to cppyy.gbl._py_<symbolname>)
+_extra_syms = [
+    'BT_NO_PROFILE',
+    'USE_BT_CLOCK',
+    'BT_LARGE_FLOAT',
+    'SIMD_2_PI',
+    'SIMD_PI',
+    'SIMD_HALF_PI',
+    'SIMD_RADS_PER_DEG',
+    'SIMD_DEGS_PER_RAD',
+    'SIMDSQRT12',
+    'SIMD_EPSILON',
+    'SIMD_INFINITY',
+    'ACTIVE_TAG',
+    'ISLAND_SLEEPING',
+    'WANTS_DEACTIVATION',
+    'DISABLE_DEACTIVATION',
+    'DISABLE_SIMULATION',
+    'BT_6DOF_FLAGS_AXIS_SHIFT',
+    'TRI_INFO_V0V1_CONVEX',
+    'TRI_INFO_V1V2_CONVEX',
+    'TRI_INFO_V2V0_CONVEX',
+    'TRI_INFO_V0V1_SWAP_NORMALB',
+    'TRI_INFO_V1V2_SWAP_NORMALB',
+    'TRI_INFO_V2V0_SWAP_NORMALB',
+    'CONVEX_DISTANCE_MARGIN',
+    'btBroadphasePairArray',
+    'btCollisionObjectArray',
+    'btConstraintArray',
+    'btConstraintRow',
+    'btDbvtProxyArray',
+    'btDbvtVolume',
+    'btInternalTriangleInfoMap',
+    'btManifoldArray',
+    'btSapBroadphaseArray',
+    'BvhSubtreeInfoArray',
+    'IndexedMeshArray',
+    'NodeArray',
+    'QuantizedNodeArray',
+]
+
 # Misc tidbits that genreflex/cppyy doesn't handle, or we want to override
 # specially:
 _manual_syms = [
+    # Typedefs of basic types apparently don't make it through cppyy at all, so
+    # make an alias for this (even though it shouldn't ever be needed in
+    # Python):
     ('btScalar', float),
-    ('BT_LARGE_FLOAT', cppyy.gbl._py_BT_LARGE_FLOAT),
+
+    # Special callback implementations (from callbacks.py)
     ('gContactAddedCallback', callbacks.ContactAddedCallback()),
     ('gContactProcessedCallback', callbacks.ContactProcessedCallback()),
     ('gContactDestroyedCallback', callbacks.ContactDestroyedCallback()),
     ('btTriangleCallback', callbacks.btTriangleCallback),
     ('btInternalTriangleIndexCallback', callbacks.btInternalTriangleIndexCallback),
-    ('btShapeHull', cppyy.gbl._py_btShapeHull),
+
+    # Extra misc stuff
     ('memory_manager', mm.MemoryManager),
 ]
 
-for symbol in _cppyy_syms:
+for symbol in _cppyy_syms + _extra_syms:
+    # If there's a version of the symbol with a '_py_' prefix, use that in
+    # preference when importing things into Python.
+    if hasattr(cppyy.gbl, '_py_' + symbol):
+        libsym = '_py_' + symbol
+    else:
+        libsym = symbol
+
     # We must use getattr first to prod cppyy into actually loading the
     # symbol into its dictionary...
-    value = getattr(cppyy.gbl, symbol)
+    value = getattr(cppyy.gbl, libsym)
 
     # But for global variables, we actually want to look things up via raw
     # __dict__ access to make sure we copy the underlying property
@@ -86,7 +141,7 @@ for symbol in _cppyy_syms:
     # actually present in the cppyy.gbl dictionary and can only be fetched via
     # getattr.  So try the dict lookup, and fall back to just using the value
     # we got from getattr above if that's not found..)
-    value = cppyy.gbl.__dict__.get(symbol, value)
+    value = cppyy.gbl.__dict__.get(libsym, value)
 
     _define_symbol(symbol, value)
 
