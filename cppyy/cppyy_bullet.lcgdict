@@ -94,11 +94,77 @@
 
     <!--
       btAlignedObjectArray contains routines that assume that all contained
-      object types have "<", ">", and "==" operators defined, but many of the
-      types used in btAlignedObjectArrays don`t actually define these types.
-      This causes a ton of instantiation failures if we don`t explicitly
-      exclude these methods for the types that don`t support them (this is
-      arguably a bug in the Bullet class heirarchy design).
+      object types have a zero-argument constructor, but several do not.
+      This causes a bunch of instantiation failures if we don`t explicitly
+      exclude these methods for the types that don`t support them
+      (this is arguably an incredibly obnoxious bug in the Bullet class
+      heirarchy design).
+    -->
+    <class name="btAlignedObjectArray&lt;btDbvt::sStkNP&gt;">
+      <method proto_pattern="btAlignedObjectArray(*btAlignedObjectArray*)"/>
+      <method name="="/>
+      <method name="copyFromArray"/>
+      <method name="resize"/>
+      <method name="expand"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btWheelInfo&gt;">
+      <method proto_pattern="btAlignedObjectArray(*btAlignedObjectArray*)"/>
+      <method name="="/>
+      <method name="copyFromArray"/>
+      <method name="resize"/>
+      <method name="expand"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btHashInt&gt;">
+      <method proto_pattern="btAlignedObjectArray(*btAlignedObjectArray*)"/>
+      <method name="="/>
+      <method name="copyFromArray"/>
+      <method name="resize"/>
+      <method name="expand"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btHashPtr&gt;">
+      <method proto_pattern="btAlignedObjectArray(*btAlignedObjectArray*)"/>
+      <method name="="/>
+      <method name="copyFromArray"/>
+      <method name="resize"/>
+      <method name="expand"/>
+    </class>
+    <class name="btAlignedObjectArray&lt;btHashString&gt;">
+      <method proto_pattern="btAlignedObjectArray(*btAlignedObjectArray*)"/>
+      <method name="="/>
+      <method name="copyFromArray"/>
+      <method name="resize"/>
+      <method name="expand"/>
+    </class>
+
+    <!--
+      Unfortunately, operator=/copy-constructors are contagious in C++, so we
+      also need to exclude them from every other class that might contain the
+      problem classes above (this is arguably a design flaw (one of many) in
+      C++).
+    -->
+    <class pattern="btRaycastVehicle">
+      <method proto_pattern="*btRaycastVehicle(*btRaycastVehicle*)"/>
+      <method name="="/>
+    </class>
+    <class pattern="btHashMap&lt;*&gt;">
+      <method proto_pattern="*btHashMap(*btHashMap*)"/>
+      <method name="="/>
+    </class>
+    <class pattern="btDefaultSerializer">
+      <method proto_pattern="*btDefaultSerializer(*btDefaultSerializer*)"/>
+      <method name="="/>
+    </class>
+    <class pattern="btTriangleInfoMap">
+      <method proto_pattern="*btTriangleInfoMap(*btTriangleInfoMap*)"/>
+      <method name="="/>
+    </class>
+
+    <!--
+      btAlignedObjectArray also contains routines that assume that all
+      contained object types have "<", ">", and "==" operators defined, but
+      a LOT of the types used in btAlignedObjectArrays don`t actually define
+      those either.  Exclude these methods like those above.
+      (this is arguably also a bug in the Bullet class heirarchy design).
     -->
     <class name="btAlignedObjectArray&lt;btSolverConstraint&gt;">
       <method name="findBinarySearch"/>

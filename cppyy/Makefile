@@ -1,6 +1,6 @@
 include ../Config.mk
 
-APP_INCDIRS = ../include/bullet $(BULLET_HOME)/include/bullet
+APP_INCDIRS = $(BULLET_HOME)/include/bullet
 APP_LIBDIRS = $(BULLET_HOME)/lib
 APP_LIBS = -lBulletDynamics -lBulletCollision -lLinearMath
 TARGETS = cppyy_bullet.so

@@ -5,7 +5,7 @@ FIXED_INCDIR = include
 
 .PHONY: all check install clean distclean python cppyy
 
-all check install: .fix_includes
+all check install:
 	$(MAKE) -C cppyy $@
 	$(MAKE) -C python $@
 
@@ -20,9 +20,3 @@ python:
 cppyy:
 	$(MAKE) -C cppyy all
 
-# This is a hack to work around bugs in the current Bullet header files
-.fix_includes: fix_includes.patch
-	mkdir -p  include
-	cp -rp $(BULLET_INCDIR)/bullet $(FIXED_INCDIR)
-	cd $(FIXED_INCDIR) && patch -f -p1 < ../fix_includes.patch
-	touch .fix_includes
