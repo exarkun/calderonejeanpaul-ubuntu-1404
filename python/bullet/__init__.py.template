@@ -4,6 +4,7 @@ import cppyy
 
 _solib_name = "cppyy_bullet.so"
 
+
 # First, create the 'bt' object, so that when we import other modules (such as
 # 'bullet.callbacks', they can do 'from bullet import bt' too. (we'll populate
 # BulletLibrary later)
@@ -24,6 +25,7 @@ cppyy.load_reflection_info(_solib)
 from . import fixups
 from . import callbacks
 from . import mm
+
 
 def _define_symbol(symbol, value):
     # All these must be set on the BulletLibrary class, not the 'bt' object,
@@ -116,7 +118,8 @@ _manual_syms = [
     ('gContactProcessedCallback', callbacks.ContactProcessedCallback()),
     ('gContactDestroyedCallback', callbacks.ContactDestroyedCallback()),
     ('btTriangleCallback', callbacks.btTriangleCallback),
-    ('btInternalTriangleIndexCallback', callbacks.btInternalTriangleIndexCallback),
+    ('btInternalTriangleIndexCallback',
+        callbacks.btInternalTriangleIndexCallback),
 
     # Extra misc stuff
     ('memory_manager', mm.MemoryManager),
@@ -147,4 +150,3 @@ for symbol in _cppyy_syms + _extra_syms:
 
 for symbol, value in _manual_syms:
     _define_symbol(symbol, value)
-

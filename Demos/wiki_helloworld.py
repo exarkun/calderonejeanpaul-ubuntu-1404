@@ -29,34 +29,31 @@ if __name__ == "__main__":
 
     solver = bt.SequentialImpulseConstraintSolver()
 
-    dynamicsWorld = bt.DiscreteDynamicsWorld(dispatcher,broadphase,solver,collisionConfiguration)
+    dynamicsWorld = bt.DiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration)
 
-    dynamicsWorld.setGravity(bt.Vector3(0,-10,0))
+    dynamicsWorld.setGravity(bt.Vector3(0, -10, 0))
 
-
-    groundShape = bt.StaticPlaneShape(bt.Vector3(0,1,0),1)
+    groundShape = bt.StaticPlaneShape(bt.Vector3(0, 1, 0), 1)
 
     fallShape = bt.SphereShape(1)
 
-
-    groundMotionState = bt.DefaultMotionState(bt.Transform(bt.Quaternion(0,0,0,1),bt.Vector3(0,-1,0)))
-    groundRigidBodyCI = bt.RigidBody.btRigidBodyConstructionInfo(0,groundMotionState,groundShape,bt.Vector3(0,0,0))
+    groundMotionState = bt.DefaultMotionState(bt.Transform(bt.Quaternion(0, 0, 0, 1), bt.Vector3(0, -1, 0)))
+    groundRigidBodyCI = bt.RigidBody.btRigidBodyConstructionInfo(0, groundMotionState, groundShape, bt.Vector3(0, 0, 0))
     groundRigidBody = bt.RigidBody(groundRigidBodyCI)
     dynamicsWorld.addRigidBody(groundRigidBody)
 
-
-    fallMotionState = bt.DefaultMotionState(bt.Transform(bt.Quaternion(0,0,0,1),bt.Vector3(0,50,0)))
+    fallMotionState = bt.DefaultMotionState(bt.Transform(bt.Quaternion(0, 0, 0, 1), bt.Vector3(0, 50, 0)))
     mass = 1
-    fallInertia = bt.Vector3(0,0,0)
-    fallShape.calculateLocalInertia(mass,fallInertia)
-    fallRigidBodyCI = bt.RigidBody.btRigidBodyConstructionInfo(mass,fallMotionState,fallShape,fallInertia)
+    fallInertia = bt.Vector3(0, 0, 0)
+    fallShape.calculateLocalInertia(mass, fallInertia)
+    fallRigidBodyCI = bt.RigidBody.btRigidBodyConstructionInfo(mass, fallMotionState, fallShape, fallInertia)
     fallRigidBody = bt.RigidBody(fallRigidBodyCI)
     dynamicsWorld.addRigidBody(fallRigidBody)
 
     trans = bt.Transform()
 
     for i in xrange(300):
-        dynamicsWorld.stepSimulation(1/60,10)
+        dynamicsWorld.stepSimulation(1.0 / 60, 10)
 
         fallRigidBody.getMotionState().getWorldTransform(trans)
 
@@ -64,4 +61,3 @@ if __name__ == "__main__":
 
     dynamicsWorld.removeRigidBody(fallRigidBody)
     dynamicsWorld.removeRigidBody(groundRigidBody)
- 

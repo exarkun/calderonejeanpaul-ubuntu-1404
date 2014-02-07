@@ -12,4 +12,3 @@ public:
     btScalar m_matrix[16];
     _py_OpenGLMatrix(btTransform t) { t.getOpenGLMatrix(m_matrix); }
 };
-

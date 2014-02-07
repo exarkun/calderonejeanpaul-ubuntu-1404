@@ -2,6 +2,7 @@ import cppyy
 
 #FIXME: Make all this threadsafe
 
+
 class MemoryManager (object):
     memory_managers = {}
 
@@ -59,4 +60,3 @@ class MemoryManager (object):
         else:
             persistent = ""
         return "<{}{}{}: {} kept objects>".format(self.__class__.__name__, name, persistent, len(self._objects))
-

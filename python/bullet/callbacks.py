@@ -4,6 +4,7 @@ from bullet import bt
 
 ffi = cffi.FFI()
 
+
 class GlobalCallback (object):
     cffi_signature = None
 
@@ -27,7 +28,8 @@ class ContactAddedCallback (GlobalCallback):
     cpp_setter = "_py_set_gContactAddedCallback"
     cffi_signature = "bool (*f)(intptr_t i_cp, intptr_t i_colObj0, int partId0, int index0, intptr_t i_colObj1, int partId1, int index1)"
 
-    def cffi_callback(self, i_cp, i_colObj0, partId0, index0, i_colObj1, partId1, index1):
+    def cffi_callback(self, i_cp, i_colObj0, partId0, index0, i_colObj1,
+                      partId1, index1):
         cp = cppyy.bind_object(i_cp, bt.ManifoldPoint)
         colObj0 = cppyy.bind_object(i_colObj0, bt.CollisionObject)
         colObj1 = cppyy.bind_object(i_colObj1, bt.CollisionObject)
@@ -43,6 +45,7 @@ class ContactProcessedCallback (GlobalCallback):
         body0 = cppyy.bind_object(i_body0, bt.CollisionObject)
         body1 = cppyy.bind_object(i_body1, bt.CollisionObject)
         return bool(self.func(cp, body0, body1))
+
 
 class ContactDestroyedCallback (GlobalCallback):
     cpp_setter = "_py_set_gContactDestroyedCallback"
@@ -71,6 +74,7 @@ class btTriangleCallback (cppyy.gbl._py_btTriangleCallback):
     def __repr__(self):
         return "<{} object at 0x{:x}>".format(self.__class__.__name__, cppyy.addressof(self))
 
+
 class btInternalTriangleIndexCallback (cppyy.gbl._py_btInternalTriangleIndexCallback):
     def __new__(cls):
         o = cppyy.gbl._py_btInternalTriangleIndexCallback.__new__(cls)
@@ -89,4 +93,3 @@ class btInternalTriangleIndexCallback (cppyy.gbl._py_btInternalTriangleIndexCall
 
     def __repr__(self):
         return "<{} object at 0x{:x}>".format(self.__class__.__name__, cppyy.addressof(self))
-

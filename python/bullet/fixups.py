@@ -30,6 +30,7 @@ cppyy.gbl.btMatrix3x3.__sub__ = getattr(cppyy.gbl, 'operator-')
 cppyy.gbl.btQuaternion.__mul__ = getattr(cppyy.gbl, 'operator*')
 cppyy.gbl.btQuaternion.__rmul__ = getattr(cppyy.gbl, 'operator*')
 
+
 # The array-subscript usage of btVector3 appears to be unusual/obscure, but it
 # is used in the demos, so we should support it (it also makes it easy to do
 # things like convert a btVector3 to a list/tuple):
@@ -39,8 +40,10 @@ def __getitem__(self, index):
         raise IndexError(index)
     return self.m_floats[index]
 
+
 def __setitem__(self, index, value):
     self.m_floats[index] = value
+
 
 def __len__(self):
     return 3
@@ -48,6 +51,7 @@ def __len__(self):
 cppyy.gbl.btVector3.__getitem__ = __getitem__
 cppyy.gbl.btVector3.__setitem__ = __setitem__
 cppyy.gbl.btVector3.__len__ = __len__
+
 
 # Misc overrides for particular methods:
 
@@ -59,6 +63,7 @@ def getOpenGLMatrix(self, matrix=None):
         return matrix
 
 cppyy.gbl.btTransform.getOpenGLMatrix = getOpenGLMatrix
+
 
 def getBuffer(self):
     cdata = ffi.cast("char *", self.getBufferPointer().buffer)
