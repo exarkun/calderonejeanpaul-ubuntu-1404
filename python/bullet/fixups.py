@@ -7,6 +7,7 @@
 
 import cppyy
 import cffi
+import weakref
 
 ffi = cffi.FFI()
 
@@ -51,6 +52,32 @@ def __len__(self):
 cppyy.gbl.btVector3.__getitem__ = __getitem__
 cppyy.gbl.btVector3.__setitem__ = __setitem__
 cppyy.gbl.btVector3.__len__ = __len__
+
+# getting/setting "user pointers".  We fake this and don't actually get/set the
+# user pointer on the C++ side.  This means if some C++ code calls
+# getUserPointer they won't get the same thing we set, but then they probably
+# wouldn't be able to make sense of a pointer to a pure Python object (which is
+# what people are most likely to want to use this for) anyway..
+
+userpointers = weakref.WeakValueDictionary()
+
+
+def setUserPointer(self, obj):
+    global userpointers
+    userpointers[cppyy.addressof(self)] = obj
+
+
+def getUserPointer(self):
+    global userpointers
+    return userpointers.get(cppyy.addressof(self))
+
+cppyy.gbl.btCollisionShape.setUserPointer = setUserPointer
+cppyy.gbl.btCollisionShape.getUserPointer = getUserPointer
+cppyy.gbl.btCollisionObject.setUserPointer = setUserPointer
+cppyy.gbl.btCollisionObject.getUserPointer = getUserPointer
+cppyy.gbl.btDefaultMotionState.m_userPointer = property(getUserPointer, setUserPointer)
+cppyy.gbl.CProfileNode.SetUserPointer = setUserPointer
+cppyy.gbl.CProfileNode.GetUserPointer = getUserPointer
 
 
 # Misc overrides for particular methods:
