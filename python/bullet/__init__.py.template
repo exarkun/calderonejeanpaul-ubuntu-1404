@@ -68,6 +68,7 @@ _cppyy_syms = %SYMBOLS%
 _extra_syms = [
     'BT_NO_PROFILE',
     'USE_BT_CLOCK',
+    'BT_USE_DOUBLE_PRECISION',
     'BT_LARGE_FLOAT',
     'SIMD_2_PI',
     'SIMD_PI',

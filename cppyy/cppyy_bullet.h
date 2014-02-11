@@ -39,6 +39,12 @@ template class btAxisSweep3Internal<unsigned short>::Handle;
     static const bool _py_USE_BT_CLOCK = false;
 #endif
 
+#ifdef BT_USE_DOUBLE_PRECISION
+    static const bool _py_BT_USE_DOUBLE_PRECISION = true;
+#else
+    static const bool _py_BT_USE_DOUBLE_PRECISION = false;
+#endif
+
 static const btScalar _py_BT_LARGE_FLOAT = BT_LARGE_FLOAT;
 
 static const btScalar _py_SIMD_2_PI = SIMD_2_PI;

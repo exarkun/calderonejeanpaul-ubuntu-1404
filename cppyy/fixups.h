@@ -7,8 +7,6 @@ public:
     btAlignedObjectArray<unsigned int> getIndexPointer() { return m_indices; }
 };
 
-class _py_OpenGLMatrix {
-public:
-    btScalar m_matrix[16];
-    _py_OpenGLMatrix(btTransform t) { t.getOpenGLMatrix(m_matrix); }
-};
+void _py_getOpenGLMatrix(btTransform *t, uintptr_t matrix) {
+    t->getOpenGLMatrix((btScalar *)matrix);
+}

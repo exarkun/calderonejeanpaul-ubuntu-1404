@@ -2,6 +2,8 @@ import cppyy
 
 #FIXME: Make all this threadsafe
 
+OBJTYPE_PYTHON = 0
+OBJTYPE_CPPYY = 1
 
 class MemoryManager (object):
     memory_managers = {}
@@ -28,13 +30,19 @@ class MemoryManager (object):
         return self.keep(obj)
 
     def keep(self, obj):
-        #TODO: handle non-cppyy objects?
-        objid = cppyy.addressof(obj)
+        try:
+            objid = (OBJTYPE_CPPYY, cppyy.addressof(obj))
+        except TypeError:
+            objid = (OBJTYPE_PYTHON, id(obj))
         self._objects.setdefault(objid, [0, obj])[0] += 1
         return obj
 
     def release(self, obj):
-        objid = cppyy.addressof(obj)
+        try:
+            objid = (OBJTYPE_CPPYY, cppyy.addressof(obj))
+        except TypeError:
+            objid = (OBJTYPE_PYTHON, id(obj))
+        self._objects.setdefault(objid, [0, obj])[0] += 1
         info = self._objects[objid]
         info[0] -= 1
         if info[0] <= 0:

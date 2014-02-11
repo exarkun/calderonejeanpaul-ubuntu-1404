@@ -7,6 +7,7 @@
 
 import cppyy
 import cffi
+import ctypes
 import weakref
 
 ffi = cffi.FFI()
@@ -82,12 +83,19 @@ cppyy.gbl.CProfileNode.GetUserPointer = getUserPointer
 
 # Misc overrides for particular methods:
 
+# We use ctypes arrays for this because pyOpenGL is ctypes-based, so the intent
+# is that the return value of this can be passed straight to pyOpenGL's
+# routines with no conversion required.
+if cppyy.gbl._py_BT_USE_DOUBLE_PRECISION:
+    OpenGLMatrixArray = ctypes.c_double * 16
+else:
+    OpenGLMatrixArray = ctypes.c_float * 16
+
 def getOpenGLMatrix(self, matrix=None):
     if matrix is None:
-        return list(cppyy.gbl._py_OpenGLMatrix(self).m_matrix)
-    else:
-        matrix[:] = cppyy.gbl._py_OpenGLMatrix(self).m_matrix
-        return matrix
+        matrix = OpenGLMatrixArray()
+    cppyy.gbl._py_getOpenGLMatrix(self, ctypes.addressof(matrix))
+    return matrix
 
 cppyy.gbl.btTransform.getOpenGLMatrix = getOpenGLMatrix
 
