@@ -15,8 +15,8 @@ class GL_ShapeDrawer:
     class ShapeCache:
         class Edge:
             def __init__(self, n=[None, None], v=[0, 0]):
-                self.n = n
-                self.v = v
+                self.n = list(n)
+                self.v = list(v)
 
         def __init__(self, s):
             self.m_shapehull = bt.ShapeHull(s)
@@ -470,13 +470,12 @@ class GL_ShapeDrawer:
                     e = edges.get((min(a, b), max(a, b)))
                     if not e:
                         e = GL_ShapeDrawer.ShapeCache.Edge()
+                        edges[(min(a,b), max(a,b))] = e
                         sc.m_edges.append(e)
                         e.n[0] = nrm
                         e.n[1] = -nrm
                         e.v[0] = a
                         e.v[1] = b
-                        #FIXME: bug in original code: e is never put into edges
-                        #edges[(min(a,b), max(a,b))] = e
                     else:
                         e.n[1] = nrm
                     j = k
