@@ -7,8 +7,11 @@ from GL_ShapeDrawer import GL_ShapeDrawer
 from GLDebugFont import *
 from GlutStuff import *
 from OpenGL.GLU import *
+from OpenGL_cffi import *
 
 USE_MOTIONSTATE = True
+USE_DISPLAY_LISTS = True
+USE_STENCILOPSEPARATE = True
 SHOW_NUM_DEEP_PENETRATIONS = True
 
 numObjects = 0
@@ -68,6 +71,9 @@ class DemoApplication:
         if bt.USE_BT_CLOCK:
             self.m_clock = bt.Clock()
 
+        self.m_initDL = None
+        self.m_shadowDL = None
+
     def __del__(self):
         if not bt.NO_PROFILE:
             bt.CProfileManager.Release_Iterator(self.m_profileIterator)
@@ -88,6 +94,7 @@ class DemoApplication:
 
     def showProfileInfo(self, xOffset, yStart, yIncr):
         if not bt.NO_PROFILE:
+            GLDebugDrawStringStart()
             time_since_reset = 0
             if not self.m_idle:
                 time_since_reset = bt.CProfileManager.Get_Time_Since_Reset()
@@ -145,11 +152,17 @@ class DemoApplication:
             self.displayProfileString(xOffset, yStart, blockTime)
             yStart += yIncr
 
+            GLDebugDrawStringEnd()
+
     def renderscene(self, pass_no):
         rot = bt.Matrix3x3()
         rot.setIdentity()
         numObjects = self.m_dynamicsWorld.getNumCollisionObjects()
         wireColor = bt.Vector3(1, 0, 0)
+        if pass_no == 1:
+            self.m_shapeDrawer.drawShadowStart()
+        else:
+            self.m_shapeDrawer.drawOpenGLStart()
         for i in xrange(numObjects):
             colObj = self.m_dynamicsWorld.getCollisionObjectArray()[i]
             body = colObj
@@ -262,12 +275,24 @@ class DemoApplication:
         self.m_forwardAxis = axis
 
     def myinit(self):
-        light_ambient = [0.2, 0.2, 0.2, 1.0]
-        light_diffuse = [1.0, 1.0, 1.0, 1.0]
-        light_specular = [1.0, 1.0, 1.0, 1.0]
+        if USE_DISPLAY_LISTS:
+            if not self.m_initDL:
+                self.m_initDL = glGenLists(1)
+                glNewList(self.m_initDL, GL_COMPILE)
+                self.myinit_ops()
+                glEndList()
+            glCallList(self.m_initDL)
+        else:
+            self.myinit_ops()
+
+    def myinit_ops(self):
+        Float4 = ctypes.c_float * 4
+        light_ambient = Float4(0.2, 0.2, 0.2, 1.0)
+        light_diffuse = Float4(1.0, 1.0, 1.0, 1.0)
+        light_specular = Float4(1.0, 1.0, 1.0, 1.0)
         #      light_position is NOT default value
-        light_position0 = [1.0, 10.0, 1.0, 0.0]
-        light_position1 = [-1.0, -10.0, -1.0, 0.0]
+        light_position0 = Float4(1.0, 10.0, 1.0, 0.0)
+        light_position1 = Float4(-1.0, -10.0, -1.0, 0.0)
 
         glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient)
         glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse)
@@ -288,6 +313,8 @@ class DemoApplication:
         glDepthFunc(GL_LESS)
 
         glClearColor(0.7, 0.7, 0.7, 0)
+
+        self.m_shapeDrawer.drawOpenGLInit()
 
     def toggleIdle(self):
         if self.m_idle:
@@ -828,46 +855,44 @@ class DemoApplication:
         if self.m_dynamicsWorld:
             if self.m_enableshadows:
                 glClear(GL_STENCIL_BUFFER_BIT)
-                glEnable(GL_CULL_FACE)
                 self.renderscene(0)
 
                 glDisable(GL_LIGHTING)
                 glDepthMask(GL_FALSE)
-                glDepthFunc(GL_LEQUAL)
                 glEnable(GL_STENCIL_TEST)
                 glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE)
                 glStencilFunc(GL_ALWAYS, 1, 0xFFFFFFFF)
-                glFrontFace(GL_CCW)
-                glStencilOp(GL_KEEP, GL_KEEP, GL_INCR)
-                self.renderscene(1)
-                glFrontFace(GL_CW)
-                glStencilOp(GL_KEEP, GL_KEEP, GL_DECR)
-                self.renderscene(1)
-                glFrontFace(GL_CCW)
 
-                glPolygonMode(GL_FRONT, GL_FILL)
-                glPolygonMode(GL_BACK, GL_FILL)
-                glShadeModel(GL_SMOOTH)
-                glEnable(GL_DEPTH_TEST)
-                glDepthFunc(GL_LESS)
-                glEnable(GL_LIGHTING)
-                glDepthMask(GL_TRUE)
-                glCullFace(GL_BACK)
-                glFrontFace(GL_CCW)
-                glEnable(GL_CULL_FACE)
-                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+                if USE_STENCILOPSEPARATE:
+                    # FIXME: This should be equivalent (but much faster) to the
+                    # alternative method, but causes some shadow artifacts
+                    # sometimes.  Need to figure out why.
+                    glDisable(GL_CULL_FACE)
+                    glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_KEEP, GL_INCR)
+                    glStencilOpSeparate(GL_BACK, GL_KEEP, GL_KEEP, GL_DECR)
+                    self.renderscene(1)
+                    glEnable(GL_CULL_FACE)
+                else:
+                    glFrontFace(GL_CCW)
+                    glStencilOp(GL_KEEP, GL_KEEP, GL_INCR)
+                    self.renderscene(1)
+                    glFrontFace(GL_CW)
+                    glStencilOp(GL_KEEP, GL_KEEP, GL_DECR)
+                    self.renderscene(1)
+                    glFrontFace(GL_CCW)
 
-                glDepthFunc(GL_LEQUAL)
-                glStencilFunc(GL_NOTEQUAL, 0, 0xFFFFFFFF)
-                glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP)
-                glDisable(GL_LIGHTING)
-                self.renderscene(2)
-                glEnable(GL_LIGHTING)
-                glDepthFunc(GL_LESS)
+                if USE_DISPLAY_LISTS:
+                    if not self.m_shadowDL:
+                        self.m_shadowDL = glGenLists(1)
+                        glNewList(self.m_shadowDL, GL_COMPILE)
+                        self.drawshadow()
+                        glEndList()
+                    glCallList(self.m_shadowDL)
+                else:
+                    self.drawshadow()
+
                 glDisable(GL_STENCIL_TEST)
-                glDisable(GL_CULL_FACE)
             else:
-                glDisable(GL_CULL_FACE)
                 self.renderscene(0)
 
             xOffset = 10
@@ -893,6 +918,33 @@ class DemoApplication:
             glDisable(GL_LIGHTING)
 
         self.updateCamera()
+
+    def drawshadow(self):
+        glDepthMask(GL_TRUE)
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+        glStencilFunc(GL_NOTEQUAL, 0, 0xFFFFFFFF)
+        glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP)
+
+        glPushMatrix()
+        glLoadIdentity()
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        glLoadIdentity()
+        glOrtho(0, 1, 1, 0, 0, 1)
+        glDisable(GL_DEPTH_TEST)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA)
+        glColor4f(0.0, 0.0, 0.0, 0.5)
+        glBegin(GL_QUADS)
+        glVertex2i(0, 0)
+        glVertex2i(0, 1)
+        glVertex2i(1, 1)
+        glVertex2i(1, 0)
+        glEnd()
+        glEnable(GL_DEPTH_TEST)
+        glPopMatrix()
+        glMatrixMode(GL_MODELVIEW)
+        glPopMatrix()
 
     def swapBuffers(self):
         pass

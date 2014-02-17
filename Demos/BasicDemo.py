@@ -3,10 +3,12 @@
 from __future__ import division
 
 import sys
+import time
 from bullet import bt
 
 import OpenGL
 OpenGL.ERROR_CHECKING = False
+OpenGL.ERROR_ON_COPY = True
 
 from DemoOpenGL.GlutStuff import *
 from DemoOpenGL.GlutDemoApplication import PlatformDemoApplication
@@ -30,6 +32,9 @@ START_POS_Z = -3
 
 mm = bt.memory_manager('DemoApplication')
 
+frame_no = 0
+frame_time = 0
+
 
 class BasicDemo (PlatformDemoApplication):
     #btBroadphaseInterface*  m_broadphase;
@@ -47,7 +52,7 @@ class BasicDemo (PlatformDemoApplication):
 
     def initPhysics(self):
         self.setTexturing(True)
-        self.setShadows(True)
+        #self.setShadows(True) #FIXME: turn this back on if we can get enough pyOpenGL performance
 
         self.setCameraDistance(SCALING * 50.)
 
@@ -146,6 +151,15 @@ class BasicDemo (PlatformDemoApplication):
         self.m_collisionshapes = []
 
     def clientMoveAndDisplay(self):
+        global frame_no, frame_time
+        if not (frame_no % 20):
+            t = time.time()
+            fps = 20. / (t - frame_time)
+            if frame_no:
+                print "FPS: %f" % (fps,)
+            frame_time = t
+        frame_no += 1
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # simple dynamics world doesn't handle fixed-time-stepping

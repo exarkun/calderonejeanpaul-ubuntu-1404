@@ -1,13 +1,43 @@
+import gc, time
 from bullet import bt
 
 from GlutStuff import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.images import *
+from OpenGL_cffi import *
 
+USE_ARRAYS = True
 USE_DISPLAY_LISTS = True
 
 mm = bt.memory_manager('DemoApplication')
+
+box_vertices = (GLfloat * (24 * 3))(
+    1, 1, 1,  -1, 1, 1,  -1,-1, 1,   1,-1, 1,  # v0,v1,v2,v3 (front)
+    1, 1, 1,   1,-1, 1,   1,-1,-1,   1, 1,-1,  # v0,v3,v4,v5 (right)
+    1, 1, 1,   1, 1,-1,  -1, 1,-1,  -1, 1, 1,  # v0,v5,v6,v1 (top)
+   -1, 1, 1,  -1, 1,-1,  -1,-1,-1,  -1,-1, 1,  # v1,v6,v7,v2 (left)
+   -1,-1,-1,   1,-1,-1,   1,-1, 1,  -1,-1, 1,  # v7,v4,v3,v2 (bottom)
+    1,-1,-1,  -1,-1,-1,  -1, 1,-1,   1, 1,-1,  # v4,v7,v6,v5 (back)
+)
+
+box_normals = (GLfloat * (24 * 3))(
+    0, 0, 1,   0, 0, 1,   0, 0, 1,   0, 0, 1,  # v0,v1,v2,v3 (front)
+    1, 0, 0,   1, 0, 0,   1, 0, 0,   1, 0, 0,  # v0,v3,v4,v5 (right)
+    0, 1, 0,   0, 1, 0,   0, 1, 0,   0, 1, 0,  # v0,v5,v6,v1 (top)
+   -1, 0, 0,  -1, 0, 0,  -1, 0, 0,  -1, 0, 0,  # v1,v6,v7,v2 (left)
+    0,-1, 0,   0,-1, 0,   0,-1, 0,   0,-1, 0,  # v7,v4,v3,v2 (bottom)
+    0, 0,-1,   0, 0,-1,   0, 0,-1,   0, 0,-1,  # v4,v7,v6,v5 (back)
+)
+
+box_indices = (GLubyte * 36)(
+    0, 1, 2,   2, 3, 0,  # front
+    4, 5, 6,   6, 7, 4,  # right
+    8, 9,10,  10,11, 8,  # top
+   12,13,14,  14,15,12,  # left
+   16,17,18,  18,19,16,  # bottom
+   20,21,22,  22,23,20,  # back
+)
 
 
 # OpenGL shape drawing
@@ -27,13 +57,79 @@ class GL_ShapeDrawer:
         self.m_texturehandle = None
         self.m_textureenabled = False
         self.m_textureinitialized = False
+        self.m_svacache_old = {}
+        self.m_svacache_new = {}
 
     def __del__(self):
         if self.m_textureinitialized:
             glDeleteTextures(1, self.m_texturehandle)
 
+    def drawOpenGLInit(self):
+        if self.m_textureenabled:
+            if not self.m_textureinitialized:
+                image = createTargetArray(GL_RGB, [256, 256], GL_UNSIGNED_BYTE)
+                for y in xrange(256):
+                    t = y >> 4
+                    for x in xrange(256):
+                        s = x >> 4
+                        b = 180
+
+                        c = b + ((s + (t & 1)) & 1) * (255 - b)
+                        image[0][x][y] = image[1][x][y] = image[2][x][y] = c
+
+                self.m_texturehandle = glGenTextures(1)
+                glBindTexture(GL_TEXTURE_2D, self.m_texturehandle)
+                glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
+                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
+                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+                gluBuild2DMipmaps(GL_TEXTURE_2D, 3, 256, 256, GL_RGB, GL_UNSIGNED_BYTE, image)
+                self.m_textureinitialized = True
+
+            planex = (ctypes.c_float * 4)(1, 0, 0, 0)
+            planez = (ctypes.c_float * 4)(0, 0, 1, 0)
+            glTexGenfv(GL_S, GL_OBJECT_PLANE, planex)
+            glTexGenfv(GL_T, GL_OBJECT_PLANE, planez)
+            glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR)
+            glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR)
+            glEnable(GL_TEXTURE_GEN_S)
+            glEnable(GL_TEXTURE_GEN_T)
+            glEnable(GL_TEXTURE_GEN_R)
+
+            glEnable(GL_COLOR_MATERIAL)
+            glEnable(GL_TEXTURE_2D)
+            glBindTexture(GL_TEXTURE_2D, self.m_texturehandle)
+        else:
+            glDisable(GL_TEXTURE_2D)
+
+        glEnableClientState(GL_NORMAL_ARRAY)
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glDisableClientState(GL_COLOR_ARRAY)
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY)
+
+    def drawOpenGLStart(self):
+        self.m_lastShapeType = None
+
+    def drawBox(self, shape):
+        halfExtent = shape.getHalfExtentsWithMargin()
+
+        glMatrixMode(GL_TEXTURE)
+        glLoadIdentity()
+        glScalef(0.025 * halfExtent[0], 0.025 * halfExtent[1], 0.025 * halfExtent[2])
+        glMatrixMode(GL_MODELVIEW)
+        glScalef(halfExtent[0], halfExtent[1], halfExtent[2])
+
+        if self.m_lastShapeType != bt.BOX_SHAPE_PROXYTYPE:
+            glNormalPointer(GL_FLOAT, 0, box_normals)
+            glVertexPointer(3, GL_FLOAT, 0, box_vertices)
+
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_BYTE, box_indices)
+
     def drawOpenGL(self, m, shape, color, debugMode, worldBoundsMin, worldBoundsMax):
-        if shape.getShapeType() == bt.CUSTOM_CONVEX_SHAPE_TYPE:
+        shapetype = shape.getShapeType()
+
+        if shapetype == bt.CUSTOM_CONVEX_SHAPE_TYPE:
             org = bt.Vector3(m[12], m[13], m[14])
             dx = bt.Vector3(m[0], m[1], m[2])
             dy = bt.Vector3(m[4], m[5], m[6])
@@ -51,7 +147,7 @@ class GL_ShapeDrawer:
             glDrawVector(org + dx - dy)
             glEnd()
             return
-        elif (shape.getShapeType() == bt.BOX_SHAPE_PROXYTYPE) and (debugMode & bt.IDebugDraw.DBG_FastWireframe):
+        elif (shapetype == bt.BOX_SHAPE_PROXYTYPE) and (debugMode & bt.IDebugDraw.DBG_FastWireframe):
             org = bt.Vector3(m[12], m[13], m[14])
             dx = bt.Vector3(m[0], m[1], m[2])
             dy = bt.Vector3(m[4], m[5], m[6])
@@ -82,15 +178,10 @@ class GL_ShapeDrawer:
             glEnd()
             return
 
-        # [Porting note: glMatrixMode(GL_MODELVIEW) was not present in the
-        # original, but was found to be necessary with pyOpenGL (possibly due
-        # to different OpenGL versions).  It's really a good idea to start with
-        # this anyway.]
-        glMatrixMode(GL_MODELVIEW)
         glPushMatrix()
         btglMultMatrix(m)
 
-        if shape.getShapeType() == bt.UNIFORM_SCALING_SHAPE_PROXYTYPE:
+        if shapetype == bt.UNIFORM_SCALING_SHAPE_PROXYTYPE:
             convexShape = shape.getChildShape()
             scalingFactor = shape.getUniformScalingFactor()
             tmpScaling = [
@@ -104,56 +195,13 @@ class GL_ShapeDrawer:
             glPopMatrix()
             return
 
-        if shape.getShapeType() == bt.COMPOUND_SHAPE_PROXYTYPE:
+        if shapetype == bt.COMPOUND_SHAPE_PROXYTYPE:
             for i in xrange(shape.getNumChildShapes()):
                 childTrans = shape.getChildTransform(i)
                 colShape = shape.getChildShape(i)
                 childMat = childTrans.getOpenGLMatrix()
                 drawOpenGL(childMat, colShape, color, debugMode, worldBoundsMin, worldBoundsMax)
         else:
-            if self.m_textureenabled and not self.m_textureinitialized:
-                image = createTargetArray(GL_RGB, [256, 256], GL_UNSIGNED_BYTE)
-                for y in xrange(256):
-                    t = y >> 4
-                    for x in xrange(256):
-                        s = x >> 4
-                        b = 180
-
-                        c = b + ((s + (t & 1)) & 1) * (255 - b)
-                        image[0][x][y] = image[1][x][y] = image[2][x][y] = c
-
-                self.m_texturehandle = glGenTextures(1)
-                glBindTexture(GL_TEXTURE_2D, self.m_texturehandle)
-                glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE)
-                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR)
-                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
-                glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-                gluBuild2DMipmaps(GL_TEXTURE_2D, 3, 256, 256, GL_RGB, GL_UNSIGNED_BYTE, image)
-
-            glMatrixMode(GL_TEXTURE)
-            glLoadIdentity()
-            glScalef(0.025, 0.025, 0.025)
-            glMatrixMode(GL_MODELVIEW)
-
-            planex = [1, 0, 0, 0]
-            planez = [0, 0, 1, 0]
-            glTexGenfv(GL_S, GL_OBJECT_PLANE, planex)
-            glTexGenfv(GL_T, GL_OBJECT_PLANE, planez)
-            glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR)
-            glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_OBJECT_LINEAR)
-            glEnable(GL_TEXTURE_GEN_S)
-            glEnable(GL_TEXTURE_GEN_T)
-            glEnable(GL_TEXTURE_GEN_R)
-            self.m_textureinitialized = True
-
-            glEnable(GL_COLOR_MATERIAL)
-            if self.m_textureenabled:
-                glEnable(GL_TEXTURE_2D)
-                glBindTexture(GL_TEXTURE_2D, self.m_texturehandle)
-            else:
-                glDisable(GL_TEXTURE_2D)
-
             glColor3f(color.x(), color.y(), color.z())
 
             useWireframeFallback = True
@@ -162,54 +210,25 @@ class GL_ShapeDrawer:
                 ## you can comment out any of the specific cases, and use the default
 
                 ## the benefit of 'default' is that it approximates the actual collision shape including collision margin
-                shapetype = shape.getShapeType()
                 if shapetype == bt.SPHERE_SHAPE_PROXYTYPE:
+                    glMatrixMode(GL_TEXTURE)
+                    glLoadIdentity()
+                    glScalef(0.025, 0.025, 0.025)
+                    glMatrixMode(GL_MODELVIEW)
+
                     radius = shape.getMargin()  # radius doesn't include the margin, so draw with margin
                     drawSphere(radius, 10, 10)
                     useWireframeFallback = False
                 elif shapetype == bt.BOX_SHAPE_PROXYTYPE:
-                    halfExtent = shape.getHalfExtentsWithMargin()
-
-                    indices = [
-                        0, 1, 2,
-                        3, 2, 1,
-                        4, 0, 6,
-                        6, 0, 2,
-                        5, 1, 4,
-                        4, 1, 0,
-                        7, 3, 1,
-                        7, 1, 5,
-                        5, 4, 7,
-                        7, 4, 6,
-                        7, 2, 3,
-                        7, 6, 2]
-
-                    vertices = [
-                        bt.Vector3(halfExtent[0], halfExtent[1], halfExtent[2]),
-                        bt.Vector3(-halfExtent[0], halfExtent[1], halfExtent[2]),
-                        bt.Vector3(halfExtent[0], -halfExtent[1], halfExtent[2]),
-                        bt.Vector3(-halfExtent[0], -halfExtent[1], halfExtent[2]),
-                        bt.Vector3(halfExtent[0], halfExtent[1], -halfExtent[2]),
-                        bt.Vector3(-halfExtent[0], halfExtent[1], -halfExtent[2]),
-                        bt.Vector3(halfExtent[0], -halfExtent[1], -halfExtent[2]),
-                        bt.Vector3(-halfExtent[0], -halfExtent[1], -halfExtent[2])]
-
-                    glBegin(GL_TRIANGLES)
-                    for i in xrange(0, 36, 3):
-                        v1 = vertices[indices[i]]
-                        v2 = vertices[indices[i + 1]]
-                        v3 = vertices[indices[i + 2]]
-                        normal = (v3 - v1).cross(v2 - v1)
-                        normal.normalize()
-                        glNormal3f(normal.getX(), normal.getY(), normal.getZ())
-                        glVertex3f(v1.x(), v1.y(), v1.z())
-                        glVertex3f(v2.x(), v2.y(), v2.z())
-                        glVertex3f(v3.x(), v3.y(), v3.z())
-                    glEnd()
-
+                    self.drawBox(shape)
                     useWireframeFallback = False
 
                 elif shapetype == bt.STATIC_PLANE_PROXYTYPE:
+                    glMatrixMode(GL_TEXTURE)
+                    glLoadIdentity()
+                    glScalef(0.025, 0.025, 0.025)
+                    glMatrixMode(GL_MODELVIEW)
+
                     planeConst = shape.getPlaneConstant()
                     planeNormal = shape.getPlaneNormal()
                     planeOrigin = planeNormal * planeConst
@@ -229,6 +248,11 @@ class GL_ShapeDrawer:
                     glEnd()
 
                 elif shapetype == bt.MULTI_SPHERE_SHAPE_PROXYTYPE:
+                    glMatrixMode(GL_TEXTURE)
+                    glLoadIdentity()
+                    glScalef(0.025, 0.025, 0.025)
+                    glMatrixMode(GL_MODELVIEW)
+
                     childTransform = bt.Transform()
                     childTransform.setIdentity()
 
@@ -239,6 +263,11 @@ class GL_ShapeDrawer:
                         drawOpenGL(childMat, sc, color, debugMode, worldBoundsMin, worldBoundsMax)
 
                 else:
+                    glMatrixMode(GL_TEXTURE)
+                    glLoadIdentity()
+                    glScalef(0.025, 0.025, 0.025)
+                    glMatrixMode(GL_MODELVIEW)
+
                     if shape.isConvex():
                         if shape.isPolyhedral():
                             poly = shape.getConvexPolyhedron()
@@ -290,8 +319,6 @@ class GL_ShapeDrawer:
 
                                 glEnd()
 
-            glNormal3f(0, 1, 0)
-
             ## for polyhedral shapes
             if debugMode == bt.IDebugDraw.DBG_DrawFeaturesText and shape.isPolyhedral():
                 # [Porting note: This entire section is do-nothing code in the original too.  Left in for completeness.]
@@ -312,7 +339,7 @@ class GL_ShapeDrawer:
                     #btDrawString(BMF_GetFont(BMF_kHelvetica10), buf)
 
             if USE_DISPLAY_LISTS:
-                if shape.getShapeType() in (bt.TRIANGLE_MESH_SHAPE_PROXYTYPE, bt.GIMPACT_SHAPE_PROXYTYPE):
+                if shapetype in (bt.TRIANGLE_MESH_SHAPE_PROXYTYPE, bt.GIMPACT_SHAPE_PROXYTYPE):
                     dlist = OGL_get_displaylist_for_shape(shape)
                     if dlist:
                         glCallList(dlist)
@@ -324,6 +351,18 @@ class GL_ShapeDrawer:
                     shape.processAllTriangles(drawCallback, worldBoundsMin, worldBoundsMax)
 
         glPopMatrix()
+        self.m_lastShapeType = shapetype
+
+    def drawShadowStart(self):
+        if USE_ARRAYS:
+            glDisableClientState(GL_NORMAL_ARRAY)
+            glEnableClientState(GL_VERTEX_ARRAY)
+            glDisableClientState(GL_COLOR_ARRAY)
+            glDisableClientState(GL_TEXTURE_COORD_ARRAY)
+            #print (len(self.m_svacache_old) - len(self.m_svacache_new))
+            self.m_svacache_old = self.m_svacache_new
+            self.m_svacache_new = {}
+            self.m_currentSVA = None
 
     def drawShadow(self, m, extrusion, shape, worldBoundsMin, worldBoundsMax):
         glPushMatrix()
@@ -348,22 +387,67 @@ class GL_ShapeDrawer:
                 self.drawShadow(childMat, extrusion * childTrans.getBasis(), colShape, worldBoundsMin, worldBoundsMax)
         else:
             if shape.isConvex():
-                sc = self.cache(shape)
-                hull = sc.m_shapehull
-                glBegin(GL_QUADS)
-                for i in xrange(len(sc.m_edges)):
-                    d = bt.Dot(sc.m_edges[i].n[0], extrusion)
-                    if (d * bt.Dot(sc.m_edges[i].n[1], extrusion)) < 0:
-                        q = 1 if d < 0 else 0
-                        a = hull.getVertexPointer()[sc.m_edges[i].v[q]]
-                        b = hull.getVertexPointer()[sc.m_edges[i].v[1 - q]]
-                        glVertex3f(a.getX(), a.getY(), a.getZ())
-                        glVertex3f(b.getX(), b.getY(), b.getZ())
-                        aext = a + extrusion
-                        bext = b + extrusion
-                        glVertex3f(bext.getX(), bext.getY(), bext.getZ())
-                        glVertex3f(aext.getX(), aext.getY(), aext.getZ())
-                glEnd()
+                if USE_ARRAYS:
+                    sva_id = (shape, tuple(int(x) for x in extrusion))
+                    sva = self.m_svacache_old.get(sva_id)
+                    if not sva:
+                        sc = self.cache(shape)
+                        hull = sc.m_shapehull
+                        verts = hull.getVertexPointer()
+                        sv = (GLfloat * (3 * 4 * len(sc.m_edges)))()
+                        i = 0
+                        for edge in sc.m_edges:
+                            d = bt.Dot(edge.n[0], extrusion)
+                            if (d * bt.Dot(edge.n[1], extrusion)) < 0:
+                                if d >= 0:
+                                    a = verts[edge.v[0]]
+                                    b = verts[edge.v[1]]
+                                else:
+                                    a = verts[edge.v[1]]
+                                    b = verts[edge.v[0]]
+                                sv[i + 0] = a.getX()
+                                sv[i + 1] = a.getY()
+                                sv[i + 2] = a.getZ()
+                                sv[i + 3] = b.getX()
+                                sv[i + 4] = b.getY()
+                                sv[i + 5] = b.getZ()
+                                aext = a + extrusion
+                                bext = b + extrusion
+                                sv[i + 6] = bext.getX()
+                                sv[i + 7] = bext.getY()
+                                sv[i + 8] = bext.getZ()
+                                sv[i + 9] = aext.getX()
+                                sv[i + 10] = aext.getY()
+                                sv[i + 11] = aext.getZ()
+                                i += 12
+                        sva = (sv, i / 3)
+                        self.m_svacache_old[sva_id] = sva
+                    self.m_svacache_new[sva_id] = sva
+                    if self.m_currentSVA != sva:
+                        glVertexPointer(3, GL_FLOAT, 0, sva[0])
+                        self.m_currentSVA = sva
+                    glDrawArrays(GL_QUADS, 0, sva[1])
+                else:
+                    sc = self.cache(shape)
+                    hull = sc.m_shapehull
+                    verts = hull.getVertexPointer()
+                    glBegin(GL_QUADS)
+                    for edge in sc.m_edges:
+                        d = bt.Dot(edge.n[0], extrusion)
+                        if (d * bt.Dot(edge.n[1], extrusion)) < 0:
+                            if d >= 0:
+                                a = verts[edge.v[0]]
+                                b = verts[edge.v[1]]
+                            else:
+                                a = verts[edge.v[1]]
+                                b = verts[edge.v[0]]
+                            glVertex3f(a.getX(), a.getY(), a.getZ())
+                            glVertex3f(b.getX(), b.getY(), b.getZ())
+                            aext = a + extrusion
+                            bext = b + extrusion
+                            glVertex3f(bext.getX(), bext.getY(), bext.getZ())
+                            glVertex3f(aext.getX(), aext.getY(), aext.getZ())
+                    glEnd()
 
         if shape.isConcave():
             drawCallback = GlDrawcallback()
@@ -450,7 +534,7 @@ class GL_ShapeDrawer:
     def cache(self, shape):
         sc = shape.getUserPointer()
         if not sc:
-            sc = mm(self.ShapeCache(shape))
+            sc = self.ShapeCache(shape)
             sc.m_shapehull.buildHull(shape.getMargin())
             self.m_shapecaches.append(sc)
             shape.setUserPointer(sc)

@@ -1,6 +1,7 @@
+from bullet import bt
 from OpenGL.GL import *
 from OpenGL.GLUT import *
-from bullet import bt
+from OpenGL_cffi import *
 
 BT_USE_FREEGLUT = True
 

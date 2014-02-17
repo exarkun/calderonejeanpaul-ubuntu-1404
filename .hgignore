@@ -11,3 +11,4 @@ syntax: regexp
 ^include/
 ^python/bullet/__init__\.py$
 ^cppyy/cppyy_bullet\.cpp$
+__pycache__

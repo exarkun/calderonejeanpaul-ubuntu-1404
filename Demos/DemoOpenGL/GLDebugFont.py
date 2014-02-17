@@ -2,16 +2,20 @@ import array
 
 from bullet import bt
 from OpenGL.GL import *
+from OpenGL_cffi import *
 
 sTexturesInitialized = False
 sTexture = -1
 sScreenWidth = -1
 sScreenHeight = -1
+sVertArray = (GLfloat * 0)()
+sTexArray = (GLfloat * 0)()
+sSpacing = None
 
-USE_ARRAYS = 1
+USE_ARRAYS = True
 
 def GLDebugResetFont(screenWidth, screenHeight):
-    global sTexturesInitialized, sTexture, sScreenWidth, sScreenHeight, sFontData
+    global sTexturesInitialized, sTexture, sScreenWidth, sScreenHeight
 
     if (sScreenWidth == screenWidth) and (sScreenHeight == screenHeight):
         return
@@ -28,120 +32,178 @@ def GLDebugResetFont(screenWidth, screenHeight):
         glTexImage2D(GL_TEXTURE_2D, 0, 3, 256 , 256 , 0, GL_RGB, GL_UNSIGNED_BYTE, sFontData)
 
 
-def GLDebugDrawStringInternal(x, y, string, rgb, enableBlend=True, spacing=10):
-    global sScreenWidth, sScreenHeight, sTexture
-
+def GLDebugDrawStringStart():
     if not sTexturesInitialized:
         GLDebugResetFont(sScreenWidth, sScreenHeight)
+
+    glMatrixMode(GL_TEXTURE)
+    glLoadIdentity()
+
+    glDisable(GL_TEXTURE_GEN_S)
+    glDisable(GL_TEXTURE_GEN_T)
+    glDisable(GL_TEXTURE_GEN_R)
+
+    glEnable(GL_TEXTURE_2D)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE)
+    glDepthFunc(GL_LEQUAL)
+    
+    glEnable(GL_DEPTH_TEST)
+    glBindTexture(GL_TEXTURE_2D, sTexture)
+    glDisable(GL_DEPTH_TEST)
+    glMatrixMode(GL_PROJECTION)
+    glPushMatrix()
+    glLoadIdentity()
+
+    glOrtho(0, sScreenWidth, 0, sScreenHeight, -1, 1)
+
+    glMatrixMode(GL_MODELVIEW)
+    glPushMatrix()
+
+    if USE_ARRAYS:
+        glDisableClientState(GL_COLOR_ARRAY)
+        glDisableClientState(GL_NORMAL_ARRAY)
+        glEnableClientState(GL_VERTEX_ARRAY)
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY)
+        glVertexPointer(3, GL_FLOAT, 0, sVertArray)
+        glTexCoordPointer(2, GL_FLOAT, 0, sTexArray)
+
+
+def GLDebugAllocStringArrays(length, spacing):
+    global sVertArray, sTexArray, sSpacing
+
+    if len(sVertArray) < length:
+        length = int(length * 1.5)  # Allocate a bit more than we need right now
+        sVertArray = (GLfloat * (3 * 4 * length))()
+        sTexArray = (GLfloat * (2 * 4 * length))()
+        glVertexPointer(3, GL_FLOAT, 0, sVertArray)
+        glTexCoordPointer(2, GL_FLOAT, 0, sTexArray)
+        sSpacing = None
+    if spacing != sSpacing:
+        w = 15
+        h = 15
+        for i in xrange(0, len(sVertArray), 12):
+            x0 = spacing * i/12
+            x1 = x0 + w
+            y0 = 0
+            y1 = h
+
+            sVertArray[i + 0] = x0
+            sVertArray[i + 1] = y0
+            sVertArray[i + 2] = 0
+
+            sVertArray[i + 3] = x1
+            sVertArray[i + 4] = y0
+            sVertArray[i + 5] = 0
+
+            sVertArray[i + 6] = x1
+            sVertArray[i + 7] = y1
+            sVertArray[i + 8] = 0
+
+            sVertArray[i + 9] = x0
+            sVertArray[i + 10] = y1
+            sVertArray[i + 11] = 0
+        sSpacing = spacing
+
+
+def GLDebugCalcStringCoords(string):
+    global sTexArray
+
+    for i in xrange(len(string)):
+        ch = ord(string[i]) - 32
+        if ch >= 0:
+            cx0 = (ch % 16) / 16.
+            cx1 = cx0 + 1./16.
+            cy0 = 1 - (ch // 16) / 16.
+            cy1 = cy0 - 1./16.
+
+            ii = i * 8
+            sTexArray[ii + 0] = cx0;  sTexArray[ii + 1] = cy1
+            sTexArray[ii + 2] = cx1;  sTexArray[ii + 3] = cy1
+            sTexArray[ii + 4] = cx1;  sTexArray[ii + 5] = cy0
+            sTexArray[ii + 6] = cx0;  sTexArray[ii + 7] = cy0
+
+
+def GLDebugDrawStringInternal(x, y, string, rgb, enableBlend=True, spacing=10):
     if string:
         glColor4f(rgb.getX(), rgb.getY(), rgb.getZ(), 1)
 
-        glMatrixMode(GL_TEXTURE)
-        glLoadIdentity()
-
-        glDisable(GL_TEXTURE_GEN_S)
-        glDisable(GL_TEXTURE_GEN_T)
-        glDisable(GL_TEXTURE_GEN_R)
-
-        glEnable(GL_TEXTURE_2D)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE)
-        glDepthFunc(GL_LEQUAL)
-        
         if enableBlend:
             glEnable(GL_BLEND)
         else:
             glDisable(GL_BLEND)
-        glEnable(GL_DEPTH_TEST)
-        glBindTexture(GL_TEXTURE_2D, sTexture)
-        glDisable(GL_DEPTH_TEST)
-        glMatrixMode(GL_PROJECTION)
-        glPushMatrix()
-        glLoadIdentity()
-
-        glOrtho(0, sScreenWidth, 0, sScreenHeight, -1, 1)
-
-        glMatrixMode(GL_MODELVIEW)
-        glPushMatrix()
         glLoadIdentity()
         glTranslatef(x, sScreenHeight - y, 0)
 
         if USE_ARRAYS:
-            glDisableClientState(GL_COLOR_ARRAY)
-            glDisableClientState(GL_NORMAL_ARRAY)
-            glEnableClientState(GL_VERTEX_ARRAY)
-            glEnableClientState(GL_TEXTURE_COORD_ARRAY)
+            GLDebugAllocStringArrays(len(string), spacing)
+            GLDebugCalcStringCoords(string)
+            glDrawArrays(GL_QUADS, 0, len(string) * 4)
+        else:
+            verts = [
+                0.0, 1.0, 0.0,
+                -1.0, -1.0, 0.0,
+                1.0, -1.0, 0.0,
+                0.0, 0.0, 0.0,
+            ]
+            
+            uv_texcoords = [
+                0, 0,
+                0, 0,
+                0, 0,
+                0, 0,
+            ]
+            verts[0] = 0;       verts[1] = 0;        verts[2] = 0
+            verts[3] = 16-1;    verts[4] = 0;        verts[5] = 0
+            verts[6] = 16-1;    verts[7] = 16-1;     verts[8] = 0
+            verts[9] = 0;       verts[10] = 16-1;    verts[11] = 0
+            
+            for i in xrange(len(string)):
+                ch = ord(string[i]) - 32
+                if ch >= 0:
+                    cx = (ch % 16) * (1. / 16.)
+                    cy = (ch // 16) * (1. / 16.)
 
-        verts = [
-            0.0, 1.0, 0.0,
-            -1.0, -1.0, 0.0,
-            1.0, -1.0, 0.0,
-            0.0, 0.0, 0.0,
-        ]
-        
-        uv_texcoords = [
-            0, 0,
-            0, 0,
-            0, 0,
-            0, 0,
-        ]
-        verts[0] = 0;       verts[1] = 0;        verts[2] = 0
-        verts[3] = 16-1;    verts[4] = 0;        verts[5] = 0
-        verts[6] = 16-1;    verts[7] = 16-1;     verts[8] = 0
-        verts[9] = 0;       verts[10] = 16-1;    verts[11] = 0
-        
-        for i in xrange(len(string)):
-            ch = ord(string[i]) - 32
-            if ch >= 0:
-                cx = (ch % 16) * (1. / 16.)
-                cy = (ch // 16) * (1. / 16.)
+                    uv_texcoords[0] = cx;            uv_texcoords[1] = 1-cy-1./16.
+                    uv_texcoords[2] = cx+1./16.;     uv_texcoords[3] = 1-cy-1./16.
+                    uv_texcoords[4] = cx+1./16.;     uv_texcoords[5] = 1-cy
+                    uv_texcoords[6] = cx;            uv_texcoords[7] = 1-cy
+                    if USE_ARRAYS:
+                        glTexCoordPointer(2, GL_FLOAT, 0, uv_texcoords)
+                        glVertexPointer(3, GL_FLOAT, 0, verts)
+                        glDrawArrays(GL_TRIANGLE_FAN, 0, 4)
+                    else:
+                        glBegin(GL_QUADS)
+                        glTexCoord2f(cx, 1-cy-1./16.)
 
-                uv_texcoords[0] = cx;            uv_texcoords[1] = 1-cy-1./16.
-                uv_texcoords[2] = cx+1./16.;     uv_texcoords[3] = 1-cy-1./16.
-                uv_texcoords[4] = cx+1./16.;     uv_texcoords[5] = 1-cy
-                uv_texcoords[6] = cx;            uv_texcoords[7] = 1-cy
-                if USE_ARRAYS:
-                    glTexCoordPointer(2, GL_FLOAT, 0, uv_texcoords)
-                    glVertexPointer(3, GL_FLOAT, 0, verts)
-                    glDrawArrays(GL_TRIANGLE_FAN, 0, 4)
-                else:
-                    glBegin(GL_QUADS)
-                    glTexCoord2f(cx, 1-cy-1./16.)
+                        glVertex2i(0,0)
+                        glTexCoord2f(cx+1./16., 1-cy-1./16.)
 
-                    glVertex2i(0,0)
-                    glTexCoord2f(cx+1./16., 1-cy-1./16.)
+                        glVertex2i(16 - 1, 0)
+                        glTexCoord2f(cx+1./16., 1-cy)
 
-                    glVertex2i(16 - 1, 0)
-                    glTexCoord2f(cx+1./16., 1-cy)
+                        glVertex2i(16 - 1, 16 - 1)
+                        glTexCoord2f(cx, 1-cy)
 
-                    glVertex2i(16 - 1, 16 - 1)
-                    glTexCoord2f(cx, 1-cy)
+                        glVertex2i(0, 16 - 1)
+                        glEnd()
 
-                    glVertex2i(0, 16 - 1)
-                    glEnd()
+                    glTranslatef(spacing, 0, 0)
 
-                glTranslatef(spacing, 0, 0)
-
-        glMatrixMode(GL_PROJECTION)
-        glPopMatrix()
-        glMatrixMode(GL_MODELVIEW)
-        glPopMatrix()
-        glEnable(GL_DEPTH_TEST)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE)
-        glDepthFunc(GL_LEQUAL)
-        glDisable(GL_BLEND)
-        glDisable(GL_TEXTURE_2D)
-
-        glMatrixMode(GL_TEXTURE)
-        glLoadIdentity()
-        glScalef(0.025, 0.025, 0.025)
-        glMatrixMode(GL_MODELVIEW)
-        if USE_ARRAYS:
-            glDisableClientState(GL_VERTEX_ARRAY)
-            glDisableClientState(GL_TEXTURE_COORD_ARRAY)
 
 def GLDebugDrawString(x, y, string):
     rgb = bt.Vector3(1, 1, 1)
     GLDebugDrawStringInternal(x, y, string, rgb)
+
+
+def GLDebugDrawStringEnd():
+    glMatrixMode(GL_PROJECTION)
+    glPopMatrix()
+    glMatrixMode(GL_MODELVIEW)
+    glPopMatrix()
+    glEnable(GL_DEPTH_TEST)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE)
+    glDepthFunc(GL_LEQUAL)
+    glDisable(GL_BLEND)
 
 
 sFontData = [

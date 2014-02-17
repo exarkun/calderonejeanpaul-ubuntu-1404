@@ -1,6 +1,7 @@
 from bullet import bt
 import math
 from OpenGL.GL import *
+from OpenGL_cffi import *
 
 class GLDebugDrawer (bt.IDebugDraw):
     #int m_debugMode;
